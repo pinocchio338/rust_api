@@ -5,3 +5,4 @@
 target
 **/*.rs.bk
 **/node_modules
+solana/beacon-server/programs/beacon-server/test-ledger

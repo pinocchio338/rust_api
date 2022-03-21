@@ -42,3 +42,5 @@ RUN cargo install --git https://github.com/project-serum/anchor --tag ${ANCHOR_C
 
 # Build a dummy program to bootstrap the BPF SDK (doing this speeds up builds).
 RUN cd tmp && anchor init dummy && cd dummy && anchor build
+
+RUN chown -R dev /home/dev/.cargo /home/dev/.config
