@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 borsh = "0.9"
+ethabi = "14.0.0"
+hex = "0.4.3"
+tiny-keccak = { version = "2.0.2", features = ["keccak"] }

@@ -1,5 +1,5 @@
 # Docker file taken from: https://github.com/project-serum/anchor/blob/master/docker/build/Dockerfile
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -10,9 +10,6 @@ RUN mkdir -p /workdir && mkdir -p /tmp && \
     libssl-dev libudev-dev
 
 RUN useradd -m dev
-
-ENV SOLANA_CLI="v1.8.14"
-ENV ANCHOR_CLI="v0.23.0"
 
 ENV NODE_VERSION="v17.0.1"
 ENV HOME="/home/dev"
@@ -35,17 +32,17 @@ RUN . $NVM_DIR/nvm.sh && \
     npm install -g yarn
 
 # Install Solana tools.
+ENV SOLANA_CLI="v1.9.13"
 RUN sh -c "$(curl -sSfL https://release.solana.com/${SOLANA_CLI}/install)"
 
 # Install anchor.
+ENV ANCHOR_CLI="v0.23.0"
 RUN cargo install --git https://github.com/project-serum/anchor --tag ${ANCHOR_CLI} anchor-cli --locked
+
+# in case anchor uses browser env for unit tests, version update
+RUN export BROWSER="" && rustup update && rustup default nightly && solana-install update
 
 # Build a dummy program to bootstrap the BPF SDK (doing this speeds up builds).
 RUN cd tmp && anchor init dummy && cd dummy && anchor build
 
-RUN chown -R dev /home/dev/.cargo /home/dev/.config
-
-# in case anchor uses browser env for unit tests
-ENV BROWSER=""
-
-RUN rustup default nightly
+RUN chown -R dev /home/dev/.cargo /home/dev/.config /home/dev/.local /home/dev/.cache
