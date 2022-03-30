@@ -1,7 +1,7 @@
 [features]
 seeds = false
 [programs.localnet]
-beacon_server = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+beacon_server = "FRoo7m8Sf6ZAirGgnn3KopQymDtujWx818kcnRxzi23b"
 
 [registry]
 url = "https://anchor.projectserum.com"

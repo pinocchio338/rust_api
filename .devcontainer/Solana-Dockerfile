@@ -44,3 +44,8 @@ RUN cargo install --git https://github.com/project-serum/anchor --tag ${ANCHOR_C
 RUN cd tmp && anchor init dummy && cd dummy && anchor build
 
 RUN chown -R dev /home/dev/.cargo /home/dev/.config
+
+# in case anchor uses browser env for unit tests
+ENV BROWSER=""
+
+RUN rustup default nightly

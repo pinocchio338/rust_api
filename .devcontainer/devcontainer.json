@@ -3,7 +3,7 @@
 {
 	"name": "Solana Beacon Server",
 	"build": {
-		"dockerfile": "Dockerfile"
+		"dockerfile": "Solana-Dockerfile"
 	},
 
 	// Set *default* container specific settings.json values on container create.
