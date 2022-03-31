@@ -17,6 +17,7 @@ getrandom = { version = "0.1.16", features = ["dummy"], optional = true }
 uint = { version = "0.8.5", optional = true }
 hex = "0.4.3"
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }
+ethereum-types = "0.13.1"
 
 [dev-dependencies]
 hex-literal = "0.3"

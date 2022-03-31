@@ -2,6 +2,7 @@ mod abi;
 mod datapoint;
 mod error;
 mod manager;
+mod util;
 
 pub use abi::*;
 pub use datapoint::DataPoint;
