@@ -1,3 +1,6 @@
+#[derive(Debug)]
 pub enum Error {
-    CannotDeserializeDataPoint
+    CannotDeserializeDataPoint,
+    InvalidData,
+    InvalidName(String),
 }
