@@ -5,9 +5,17 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["simple-abi"]
+#eth = ["ethabi"]
+simple-abi = []
+
 [dependencies]
 borsh = "0.9"
-ethabi = "14.0.0"
+ethabi = { version = "17.0.0", optional = true }
 hex = "0.4.3"
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }
+
+[dev-dependencies]
+hex-literal = "0.3"
 ethereum-types = "0.13.1"

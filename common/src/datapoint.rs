@@ -4,7 +4,7 @@ use crate::{error, Uint256};
 #[derive(Clone)]
 pub struct DataPoint {
     value: Uint256,
-    timestamp: u32
+    timestamp: u32,
 }
 
 impl DataPoint {
@@ -23,17 +23,17 @@ impl DataPoint {
             value.copy_from_slice(&raw[0..32]);
             Ok(Self {
                 value,
-                timestamp: u32::from_be_bytes([raw[32], raw[33], raw[34], raw[35]])
+                timestamp: u32::from_be_bytes([raw[32], raw[33], raw[34], raw[35]]),
             })
         }
     }
 }
 
-impl Into<Vec<u8>> for DataPoint {
-    fn into(self) -> Vec<u8> {
+impl From<DataPoint> for Vec<u8> {
+    fn from(d: DataPoint) -> Self {
         let mut v = vec![0u8; DataPoint::LEN];
-        v[0..32].copy_from_slice(&self.value);
-        v[32..].copy_from_slice(&self.timestamp.to_be_bytes());
+        v[0..32].copy_from_slice(&d.value);
+        v[32..].copy_from_slice(&d.timestamp.to_be_bytes());
         v
     }
 }
