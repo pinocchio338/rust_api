@@ -104,4 +104,26 @@ mod tests {
         contract.whitelist_user(&user);
         assert!(contract.user_is_whitelisted(&user));
     }
+
+    #[test]
+    fn serialize_contract() {
+        // set up the mock context into the testing environment
+        let context = get_context(to_valid_account("foo.near"));
+        testing_env!(context.build());
+        let mut contract = Contract::new();
+        // whitelisted user
+        let user = Address::from([0; 20]);
+        contract.whitelist_user(&user);
+
+        let mut buffer: Vec<u8> = vec![];
+        contract.serialize(&mut buffer).unwrap();
+        dbg!(&buffer);
+
+        let contract1 = Contract::try_from_slice(&mut buffer).unwrap();
+        // NOT whitelisted user
+        let user1 = Address::from([1; 20]);
+        assert!(contract1.user_is_whitelisted(&user));
+
+        assert!(!contract1.user_is_whitelisted(&user1));
+    }
 }

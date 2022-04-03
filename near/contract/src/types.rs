@@ -31,7 +31,7 @@ impl From<u128> for U256 {
 }
 
 /// Address is an alias to H160, which is [u8;20]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Address(ethereum_types::Address);
 
 impl BorshDeserialize for Address {
