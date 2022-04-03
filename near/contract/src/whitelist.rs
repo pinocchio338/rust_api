@@ -22,7 +22,7 @@ use crate::types::U256;
 near_sdk::setup_alloc!();
 
 #[near_bindgen]
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(BorshDeserialize, BorshSerialize, Default)]
 struct WhitelistStatus {
     expiration_timestamp: u64,
     /// orignally uint192, that is u128 and u64 combined
@@ -40,7 +40,7 @@ struct Contract {
 impl Contract {
     pub fn new() -> Self {
         Contract {
-            user_to_whitelist_status: LookupMap::new(b's'),
+            user_to_whitelist_status: LookupMap::new(b'u'),
         }
     }
 
@@ -50,6 +50,11 @@ impl Contract {
     /// @return isWhitelisted If the user is whitelisted
     pub fn user_is_whitelisted(&self, user: &Address) -> bool {
         self.user_to_whitelist_status.contains_key(user)
+    }
+
+    pub fn whitelist_user(&mut self, user: &Address) {
+        self.user_to_whitelist_status
+            .insert(user, &WhitelistStatus::default());
     }
 }
 
@@ -77,12 +82,26 @@ mod tests {
 
     // mark individual unit tests with #[test] for them to be registered and fired
     #[test]
-    fn test_contract() {
+    fn test_no_whitelist() {
+        // set up the mock context into the testing environment
+        let context = get_context(to_valid_account("foo.near"));
+        testing_env!(context.build());
+        let contract = Contract::new();
+        let user = Address::from([0; 20]);
+        assert!(!contract.user_is_whitelisted(&user));
+    }
+
+    #[test]
+    fn test_whitelist_user() {
         // set up the mock context into the testing environment
         let context = get_context(to_valid_account("foo.near"));
         testing_env!(context.build());
         let mut contract = Contract::new();
         let user = Address::from([0; 20]);
         assert!(!contract.user_is_whitelisted(&user));
+
+        // whitelist the user
+        contract.whitelist_user(&user);
+        assert!(contract.user_is_whitelisted(&user));
     }
 }
