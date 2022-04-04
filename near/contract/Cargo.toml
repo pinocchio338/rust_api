@@ -6,3 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ethereum-types = { version = "0.13.1", features = ["serialize"] }
+near-sdk = "3.1.0"
+serde = { version = "1"}
