@@ -1,53 +1,21 @@
+// construct_uint is giving a lot of clippy warnings. Since most of this file is copied
+// over from other crates, it's ok to allow warnings.
+#![allow(clippy::ptr_offset_with_cast)]
+#![allow(clippy::assign_op_pattern)]
+#![allow(clippy::manual_range_contains)]
+
+use uint::construct_uint;
+
 pub type Address = [u8; 20];
 pub type FixedBytes = Vec<u8>;
 pub type Bytes = Vec<u8>;
 pub type Uint = U256;
 pub type Word = [u8; 32];
 
-/// U256 representation
-#[derive(Debug, PartialEq, Clone)]
-pub struct U256 {
-    /// inner should be big endian order
-    inner: [u8; 32],
-}
-
-impl U256 {
-    const BYTES: usize = 32;
-
-    /// Slice should be big endian
-    pub fn from_big_endian(slice: &[u8]) -> Self {
-        assert!(Self::BYTES >= slice.len());
-
-        let mut inner = [0u8; Self::BYTES];
-        inner[Self::BYTES - slice.len()..Self::BYTES].copy_from_slice(slice);
-
-        Self { inner }
-    }
-
-    pub fn to_big_endian(&self, out: &mut [u8]) {
-        assert!(out.len() >= Self::BYTES);
-        out.copy_from_slice(&self.inner);
-    }
-}
-
-impl From<u128> for U256 {
-    fn from(u: u128) -> Self {
-        Self::from_big_endian(&u.to_be_bytes())
-    }
-}
-
-impl From<[u8; 32]> for U256 {
-    fn from(inner: [u8; 32]) -> Self {
-        U256::from_big_endian(&inner)
-    }
-}
-
-impl From<U256> for [u8; 32] {
-    fn from(u: U256) -> Self {
-        let mut v = [0; 32];
-        u.to_big_endian(&mut v);
-        v
-    }
+construct_uint! {
+    /// 256-bit unsigned integer.
+    #[cfg_attr(feature = "scale-info", derive(TypeInfo))]
+    pub struct U256(4);
 }
 
 #[derive(Debug, PartialEq, Clone)]

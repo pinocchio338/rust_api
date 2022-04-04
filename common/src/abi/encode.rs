@@ -119,7 +119,7 @@ fn encode_token(token: &Token) -> Mediate {
         Token::Bytes(ref bytes) => Mediate::Prefixed(pad_bytes(bytes)),
         Token::String(ref s) => Mediate::Prefixed(pad_bytes(s.as_bytes())),
         Token::FixedBytes(ref bytes) => Mediate::Raw(pad_fixed_bytes(bytes)),
-        Token::Uint(uint) => Mediate::Raw(vec![uint.clone().into()]),
+        Token::Uint(uint) => Mediate::Raw(vec![(*uint).into()]),
     }
 }
 

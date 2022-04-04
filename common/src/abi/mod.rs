@@ -8,7 +8,7 @@ pub mod encode;
 mod types;
 
 #[cfg(feature = "eth")]
-pub use ethabi::Token;
+pub use ethabi::*;
 #[cfg(feature = "simple-abi")]
 pub use types::*;
 
@@ -31,13 +31,14 @@ fn pack(t: &Token) -> Vec<u8> {
     let mut res = Vec::new();
     match t {
         Token::String(s) => res.extend(s.as_bytes()),
-        Token::Address(a) => res.extend(a.iter()),
+        Token::Address(a) => res.extend(a.as_bytes()),
         Token::Uint(n) => {
             let mut v = vec![0u8; 32];
             n.to_big_endian(&mut v);
             res.extend(v);
         }
         Token::Bytes(b) | Token::FixedBytes(b) => res.extend(b),
+        _ => {}
     };
     res
 }
@@ -52,8 +53,8 @@ pub fn keccak256(x: &[u8]) -> Bytes32 {
 
 #[cfg(test)]
 mod tests {
-    use crate::abi::types::{Address, Uint};
     use crate::abi::{encode_packed, keccak256, Token};
+    use crate::abi::{Address, Uint};
     use hex_literal::hex;
 
     #[test]
