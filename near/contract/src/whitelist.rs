@@ -13,6 +13,7 @@
 /// authorization scheme.
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
+use near_sdk::BorshStorageKey;
 use near_sdk::{env, near_bindgen};
 use std::io;
 
@@ -20,6 +21,12 @@ use crate::types::Address;
 use crate::types::U256;
 
 near_sdk::setup_alloc!();
+
+#[derive(BorshStorageKey, BorshSerialize)]
+pub enum StorageKeys {
+    Service,
+    UserWhitelist,
+}
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, Default)]
@@ -33,14 +40,14 @@ struct WhitelistStatus {
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 struct Contract {
-    user_to_whitelist_status: LookupMap<Address, WhitelistStatus>,
+    service_id_to_user_to_whitelist_status: LookupMap<String, LookupMap<Address, WhitelistStatus>>,
 }
 
 #[near_bindgen]
 impl Contract {
     pub fn new() -> Self {
         Contract {
-            user_to_whitelist_status: LookupMap::new(b'u'),
+            service_id_to_user_to_whitelist_status: LookupMap::new(StorageKeys::Service),
         }
     }
 
@@ -48,13 +55,42 @@ impl Contract {
     /// @param serviceId Service ID
     /// @param user User address
     /// @return isWhitelisted If the user is whitelisted
-    pub fn user_is_whitelisted(&self, user: &Address) -> bool {
-        self.user_to_whitelist_status.contains_key(user)
+    pub fn user_is_whitelisted(&self, service_id: &String, user: &Address) -> bool {
+        if let Some(user_to_whitelist_status) =
+            self.service_id_to_user_to_whitelist_status.get(service_id)
+        {
+            user_to_whitelist_status.contains_key(user)
+        } else {
+            false
+        }
     }
 
-    pub fn whitelist_user(&mut self, user: &Address) {
-        self.user_to_whitelist_status
-            .insert(user, &WhitelistStatus::default());
+    pub fn whitelist_user(&mut self, service_id: &String, user: &Address) {
+        if let Some(mut user_to_whitelist_status) = self
+            .service_id_to_user_to_whitelist_status
+            .remove(service_id)
+        {
+            user_to_whitelist_status.insert(user, &WhitelistStatus::default());
+
+            self.service_id_to_user_to_whitelist_status
+                .insert(service_id, &user_to_whitelist_status);
+        } else {
+            println!("no such service..: {}", service_id);
+            self.add_service(service_id);
+            self.whitelist_user(service_id, user);
+        }
+    }
+
+    pub fn add_service(&mut self, service_id: &String) {
+        assert!(
+            !self
+                .service_id_to_user_to_whitelist_status
+                .contains_key(service_id),
+            "must not have an existing service_id"
+        );
+
+        self.service_id_to_user_to_whitelist_status
+            .insert(service_id, &LookupMap::new(StorageKeys::UserWhitelist));
     }
 }
 
@@ -88,7 +124,8 @@ mod tests {
         testing_env!(context.build());
         let contract = Contract::new();
         let user = Address::from([0; 20]);
-        assert!(!contract.user_is_whitelisted(&user));
+        let service = "service1".to_string();
+        assert!(!contract.user_is_whitelisted(&service, &user));
     }
 
     #[test]
@@ -98,11 +135,12 @@ mod tests {
         testing_env!(context.build());
         let mut contract = Contract::new();
         let user = Address::from([0; 20]);
-        assert!(!contract.user_is_whitelisted(&user));
+        let service = "service1".to_string();
+        assert!(!contract.user_is_whitelisted(&service, &user));
 
         // whitelist the user
-        contract.whitelist_user(&user);
-        assert!(contract.user_is_whitelisted(&user));
+        contract.whitelist_user(&service, &user);
+        assert!(contract.user_is_whitelisted(&service, &user));
     }
 
     #[test]
@@ -113,7 +151,8 @@ mod tests {
         let mut contract = Contract::new();
         // whitelisted user
         let user = Address::from([0; 20]);
-        contract.whitelist_user(&user);
+        let service = "service1".to_string();
+        contract.whitelist_user(&service, &user);
 
         let mut buffer: Vec<u8> = vec![];
         contract.serialize(&mut buffer).unwrap();
@@ -122,8 +161,20 @@ mod tests {
         let contract1 = Contract::try_from_slice(&mut buffer).unwrap();
         // NOT whitelisted user
         let user1 = Address::from([1; 20]);
-        assert!(contract1.user_is_whitelisted(&user));
+        assert!(contract1.user_is_whitelisted(&service, &user));
 
-        assert!(!contract1.user_is_whitelisted(&user1));
+        assert!(!contract1.user_is_whitelisted(&service, &user1));
+    }
+
+    #[test]
+    #[should_panic]
+    fn must_error_when_adding_same_service_multiple_times() {
+        let context = get_context(to_valid_account("foo.near"));
+        testing_env!(context.build());
+        let mut contract = Contract::new();
+
+        let service = "service1".to_string();
+        contract.add_service(&service);
+        contract.add_service(&service);
     }
 }
