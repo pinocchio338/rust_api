@@ -74,7 +74,7 @@ impl Contract {
             self.service_id_to_user_to_whitelist_status
                 .insert(service_id, &user_to_whitelist_status);
         } else {
-            println!("no such service..: {}", service_id);
+            // create the service lookup first, and then add the user to the whitelist
             self.add_service(service_id);
             self.whitelist_user(service_id, user);
         }
