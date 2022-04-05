@@ -8,7 +8,10 @@ pub mod encode;
 mod types;
 
 #[cfg(feature = "eth")]
-pub use ethabi::*;
+mod adaptor;
+
+#[cfg(feature = "eth")]
+pub use adaptor::{decode, encode, FixedBytes, Int, ParamType, Token, Uint, U256};
 #[cfg(feature = "simple-abi")]
 pub use types::*;
 
@@ -51,10 +54,41 @@ pub fn keccak256(x: &[u8]) -> Bytes32 {
     out
 }
 
+pub fn to_eth_signed_message_hash(s: &[u8]) -> Bytes32 {
+    let (bytes, _) = encode_packed(&[
+        Token::String("\x19Ethereum Signed Message:\n".parse().unwrap()),
+        Token::String(s.len().to_string()),
+        Token::Bytes(s.to_vec()),
+    ]);
+    keccak256(&bytes)
+}
+
+#[cfg(feature = "recovery")]
+fn public_key_to_address(p: libsecp256k1::PublicKey) -> Address {
+    let hash = keccak256(&p.serialize()[1..]);
+    let mut address = Address::default();
+    address.copy_from_slice(&hash[12..]);
+    address
+}
+
+#[cfg(feature = "recovery")]
+pub fn recover(message: &Bytes32, signature: &[u8; 65]) -> Result<Address, Error> {
+    let m = libsecp256k1::Message::parse(message);
+
+    let mut s = [0u8; 64];
+    s.copy_from_slice(&signature[..64]);
+
+    let sig = libsecp256k1::Signature::parse_standard(&s)?;
+    let i = libsecp256k1::RecoveryId::parse(signature[64] - 27)?;
+    let p = libsecp256k1::recover(&m, &sig, &i)?;
+    Ok(public_key_to_address(p))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::abi::{encode_packed, keccak256, Token};
     use crate::abi::{Address, Uint};
+    use crate::to_eth_signed_message_hash;
     use hex_literal::hex;
 
     #[test]
@@ -112,5 +146,53 @@ mod tests {
             keccak256(&b),
             hex!("f3f0d971e5307ceec7ca3d9b762780778c4efe8383f0e17015a2cf8ac8dbc179")
         );
+    }
+
+    #[test]
+    fn to_eth_signed_message_hash_works() {
+        let mut bytes32 = vec![0; 32];
+        bytes32[0] = 8;
+        bytes32[1] = 10;
+
+        let mut bytes = vec![0; 36];
+        bytes[0] = 18;
+        bytes[1] = 120;
+
+        let p1 = Token::FixedBytes(bytes32);
+        let p2 = Token::Uint(Uint::from(100));
+        let p3 = Token::Bytes(bytes);
+
+        let (b, _) = encode_packed(&[p1, p2, p3]);
+        assert_eq!(b, hex!("080a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000064127800000000000000000000000000000000000000000000000000000000000000000000"));
+
+        let b = keccak256(&b);
+        assert_eq!(
+            b,
+            hex!("f3f0d971e5307ceec7ca3d9b762780778c4efe8383f0e17015a2cf8ac8dbc179")
+        );
+
+        let b = to_eth_signed_message_hash(&b);
+        assert_eq!(
+            b,
+            hex!("ff0d3be602bd7ed7c0454766464e6a1a9130a63cd505e629ae133db5c3b9f149")
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "recovery")]
+    fn verify_works() {
+        let mut bytes = vec![0; 36];
+        bytes[0] = 18;
+        bytes[1] = 120;
+
+        let message = to_eth_signed_message_hash(&bytes);
+        let signature = hex::decode("c01673d51c5e9276a380959a147a29b56e9ab47ef9fd0183c1f1155b8a1ac094571be063ea415c293bd986f31eb31faa790858bf48260157b2978b6edadd07a91b").unwrap();
+
+        let mut s = [0u8; 65];
+        s.copy_from_slice(&signature);
+
+        let pubkey = crate::recover(&message, &s).unwrap();
+        let address = hex::decode("65B0c8b91707B68C0B23388001B9dC7aab3f6A81").unwrap();
+        assert_eq!(pubkey.to_vec(), address);
     }
 }

@@ -1,5 +1,5 @@
 use super::sort;
-use ethereum_types::U256;
+use crate::U256;
 
 /// get the median from an array of U256
 pub fn median(array: &[U256]) -> U256 {
