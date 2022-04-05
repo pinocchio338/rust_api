@@ -1,11 +1,21 @@
 mod utils;
 
+use crate::utils::SolanaDataPointStorage;
 use anchor_lang::prelude::*;
+use api3_common::{derive_beacon_id, ensure, process_beacon_update, Uint};
 
 declare_id!("FRoo7m8Sf6ZAirGgnn3KopQymDtujWx818kcnRxzi23b");
 
+// a bunch of error codes
+const ERROR_INVALID_BEACON_ID_KEY: u64 = 1u64;
+
+fn map_error(e: api3_common::Error) -> anchor_lang::error::Error {
+    anchor_lang::error::Error::from(ProgramError::Custom(e.into()))
+}
+
 #[program]
 pub mod beacon_server {
+
     use super::*;
 
     /// Update a new beacon data point with signed data. The beacon id is used as
@@ -13,16 +23,21 @@ pub mod beacon_server {
     pub fn update_beacon_with_signed_data(
         ctx: Context<DataPointAccount>,
         datapoint_key: [u8; 32],
-        _template_id: [u8; 32],
-        _timestamp: [u8; 32],
+        template_id: [u8; 32],
+        timestamp: [u8; 32],
         data: Vec<u8>,
-        _signature: Vec<u8>,
     ) -> Result<()> {
-        // TOOD: perform signature check
+        let airnode = ctx.accounts.user.key.to_bytes().to_vec();
+        let beacon_id = derive_beacon_id(airnode, template_id);
+        ensure!(
+            beacon_id == datapoint_key,
+            Error::from(ProgramError::from(ERROR_INVALID_BEACON_ID_KEY))
+        )?;
 
-        msg!("delete this in actual implementation: {:?}", datapoint_key);
+        let timestamp = Uint::from(&timestamp);
 
-        utils::update_beacon_data(&mut ctx.accounts.datapoint, data)?;
+        let mut s = SolanaDataPointStorage { account: &mut ctx.accounts.datapoint };
+        process_beacon_update(&mut s, beacon_id, timestamp, data).map_err(map_error)?;
 
         Ok(())
     }
@@ -34,7 +49,10 @@ pub mod beacon_server {
         datapoint_key: [u8; 32],
         beacon_ids: Vec<[u8; 32]>,
     ) -> Result<()> {
-        assert!(!ctx.remaining_accounts.is_empty(), "must provide beacon accounts");
+        assert!(
+            !ctx.remaining_accounts.is_empty(),
+            "must provide beacon accounts"
+        );
 
         let beacon_id_tuples = ctx
             .remaining_accounts
@@ -49,7 +67,6 @@ pub mod beacon_server {
 
         let account = &mut ctx.accounts.datapoint;
         account.raw_datapoint = vec![1];
-
         Ok(())
     }
 
@@ -65,8 +82,6 @@ pub mod beacon_server {
         _datas: Vec<Vec<u8>>,
         _signatures: Vec<Vec<u8>>,
     ) -> Result<()> {
-        // TOOD: perform signature check
-
         msg!("delete this in actual implementation: {:?}", datapoint_key);
 
         Ok(())
@@ -83,7 +98,10 @@ pub mod beacon_server {
         _name: [u8; 32],
         _data_point_id: [u8; 32],
     ) -> Result<()> {
-        msg!("delete this in actual implementation: {:?}", datapoint_id_key);
+        msg!(
+            "delete this in actual implementation: {:?}",
+            datapoint_id_key
+        );
         Ok(())
     }
 
@@ -141,7 +159,7 @@ pub struct DataPointAccount<'info> {
     #[account(
         init_if_needed,
         payer = user,
-        space = 8 + 37,
+        space = 8 + 41,
         seeds = [b"datapoint", datapoint_key.as_ref()],
         bump
     )]

@@ -10,3 +10,12 @@ cargo test --all
 
 # Solana
 Read up on anchors: `https://project-serum.github.io/anchor/`
+To build the solana code, do the following:
+```
+cd solana/beacon-server
+anchor build
+
+# make sure you are not in a browser setting with 
+export BROWSER=""
+anchor test
+```

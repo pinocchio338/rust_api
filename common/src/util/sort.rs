@@ -1,4 +1,4 @@
-use ethereum_types::U256;
+use crate::U256;
 
 /// sort an array of U256
 pub fn sort(array: &[U256]) -> Vec<U256> {
