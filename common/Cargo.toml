@@ -10,8 +10,11 @@ recovery = ["libsecp256k1", "getrandom/dummy"]
 default = []
 
 [dependencies]
-borsh = "0.9"
+borsh = "0.8.2" # need to match with near-sdk borsh version
 ethabi = { version = "12.0.0" }
+derive_more = "0.99.17"
+ethereum-types  = "0.13.1"
+serde = "1"
 getrandom = { version = "0.1.16", features = ["dummy"] }
 uint = { version = "0.8.5", optional = true }
 hex = "0.4.3"

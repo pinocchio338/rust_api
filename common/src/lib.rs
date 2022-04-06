@@ -3,6 +3,7 @@ mod agg;
 mod beacon;
 mod datapoint;
 mod error;
+pub mod types;
 mod util;
 
 pub use abi::*;
