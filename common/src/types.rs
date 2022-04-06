@@ -1,11 +1,23 @@
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+use borsh::{self, BorshDeserialize, BorshSerialize};
+use derive_more::{Add, AddAssign, Display, From, Into, Sub, SubAssign};
 use serde::{Deserialize, Serialize};
 use std::io;
 
-///
-/// This type just wraps 4 u64 U256(pub [u64; 4]); Little-endian large integer type 256-bit unsigned integer.
-///
-#[derive(Debug, PartialEq, Default)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    PartialOrd,
+    Default,
+    From,
+    Into,
+    Display,
+    Add,
+    AddAssign,
+    Sub,
+    SubAssign,
+)]
 pub struct U256(ethereum_types::U256);
 
 impl BorshDeserialize for U256 {

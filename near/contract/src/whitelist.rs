@@ -17,8 +17,9 @@ use near_sdk::BorshStorageKey;
 use near_sdk::{env, near_bindgen};
 use std::io;
 
-use crate::types::Address;
-use crate::types::U256;
+use api3_common::types::Address;
+use api3_common::types::U256;
+use api3_common::Bytes32;
 
 near_sdk::setup_alloc!();
 
@@ -27,7 +28,7 @@ pub enum StorageKeys {
     Service,
     UserWhitelist,
     ServiceWithSetter,
-    UserSetterInidifinteWhitelist,
+    UserSetterIndefiniteWhitelist,
 }
 
 #[near_bindgen]
@@ -40,18 +41,18 @@ struct WhitelistStatus {
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
-struct Contract {
-    service_id_to_user_to_whitelist_status: LookupMap<String, LookupMap<Address, WhitelistStatus>>,
-    service_id_to_user_to_setter_to_indifinite_whitelist_status:
-        LookupMap<String, LookupMap<Address, LookupMap<Address, bool>>>,
+struct Whitelist {
+    service_id_to_user_to_whitelist_status: LookupMap<Bytes32, LookupMap<Address, WhitelistStatus>>,
+    service_id_to_user_to_setter_to_indefinite_whitelist_status:
+        LookupMap<Bytes32, LookupMap<Address, LookupMap<Address, bool>>>,
 }
 
 #[near_bindgen]
-impl Contract {
+impl Whitelist {
     pub fn new() -> Self {
-        Contract {
+        Self {
             service_id_to_user_to_whitelist_status: LookupMap::new(StorageKeys::Service),
-            service_id_to_user_to_setter_to_indifinite_whitelist_status: LookupMap::new(
+            service_id_to_user_to_setter_to_indefinite_whitelist_status: LookupMap::new(
                 StorageKeys::ServiceWithSetter,
             ),
         }
@@ -65,13 +66,13 @@ impl Contract {
     /// will expire
     pub fn extend_whitelist_expiration(
         &mut self,
-        service_id: String,
-        user: Address,
+        service_id: &Bytes32,
+        user: &Address,
         expiration_timestamp: u64,
     ) {
         let mut user_to_whitelist_status = self
             .service_id_to_user_to_whitelist_status
-            .remove(&service_id)
+            .remove(service_id)
             .expect("must contain this service");
         let mut whitelist_status = user_to_whitelist_status
             .remove(&user)
@@ -84,52 +85,165 @@ impl Contract {
 
         whitelist_status.expiration_timestamp = expiration_timestamp;
 
-        user_to_whitelist_status.insert(&user, &whitelist_status);
+        user_to_whitelist_status.insert(user, &whitelist_status);
 
         self.service_id_to_user_to_whitelist_status
+            .insert(service_id, &user_to_whitelist_status);
+    }
+
+    /// @notice Sets the expiration of the temporary whitelist of the user for
+    /// the service
+    /// @dev Unlike `extendWhitelistExpiration()`, this can hasten expiration
+    /// @param serviceId Service ID
+    /// @param user User address
+    /// @param expirationTimestamp Timestamp at which the temporary whitelist
+    /// will expire
+    pub fn set_whitelist_expiration(
+        &mut self,
+        service_id: &Bytes32,
+        user: &Address,
+        expiration_timestamp: u64,
+    ) {
+        self.ensure_service_exist(service_id);
+        let mut user_to_whitelist_status = self
+            .service_id_to_user_to_whitelist_status
+            .remove(service_id)
+            .expect("must have the service");
+
+        // user has an existing whitelist expiration
+        if let Some(mut whitelist_status) = user_to_whitelist_status.remove(&user) {
+            whitelist_status.expiration_timestamp = expiration_timestamp;
+            user_to_whitelist_status.insert(&user, &whitelist_status);
+        } else {
+            // insert a new entry for non existing user
+            user_to_whitelist_status.insert(
+                &user,
+                &WhitelistStatus {
+                    expiration_timestamp,
+                    ..Default::default()
+                },
+            );
+        }
+        self.service_id_to_user_to_whitelist_status
             .insert(&service_id, &user_to_whitelist_status);
+    }
+
+    /// @notice Sets the indefinite whitelist status of the user for the
+    /// service
+    /// @dev As long as at least there is at least one account that has set the
+    /// indefinite whitelist status of the user for the service as true, the
+    /// user will be considered whitelisted
+    /// @param serviceId Service ID
+    /// @param user User address
+    /// @param status Indefinite whitelist status
+    pub fn set_indefinite_whitelist_status(
+        &mut self,
+        service_id: &Bytes32,
+        user: &Address,
+        status: bool,
+    ) -> U256 {
+        // let mut indefinite_whitelist_count = U256::from(0);
+
+        // let mut user_to_whitelist_status = self
+        //     .service_id_to_user_to_whitelist_status
+        //     .remove(service_id)
+        //     .expect("must have a service id");
+
+        // self.service_id_to_user_to_whitelist_status
+        //     .insert(service_id, &user_to_whitelist_status);
+
+        // indefinite_whitelist_count
+        // TODO: need to know more abount msg.sender and it's equivalent for NEAR
+        todo!();
+    }
+
+    /// @notice Revokes the indefinite whitelist status granted to the user for
+    /// the service by a specific account
+    /// @param serviceId Service ID
+    /// @param user User address
+    /// @param setter Setter of the indefinite whitelist status
+    fn revoke_indefinite_whitelist_status(
+        &mut self,
+        service_id: &Bytes32,
+        user: &Address,
+        setter: &Address,
+    ) -> (bool, U256) {
+        self.ensure_service_exist(service_id);
+
+        let mut user_to_whitelist_status = self
+            .service_id_to_user_to_whitelist_status
+            .remove(service_id)
+            .expect("must have a service");
+
+        let mut indefinite_whitelist_count = U256::from(0);
+
+        if let Some(mut whitelist_status) = user_to_whitelist_status.remove(user) {
+            indefinite_whitelist_count = whitelist_status.indefinite_whitelist_count;
+            indefinite_whitelist_count -= U256::from(1);
+            user_to_whitelist_status.insert(user, &whitelist_status);
+        }
+
+        let mut user_to_setter_indefinite_whitelist_status = self
+            .service_id_to_user_to_setter_to_indefinite_whitelist_status
+            .remove(service_id)
+            .expect("must have a service id");
+
+        let mut revoked = false;
+        if let Some(mut setter_indefinite_whitelist_status) =
+            user_to_setter_indefinite_whitelist_status.remove(user)
+        {
+            setter_indefinite_whitelist_status.insert(setter, &false);
+            user_to_setter_indefinite_whitelist_status
+                .insert(user, &setter_indefinite_whitelist_status);
+
+            revoked = true;
+        }
+
+        self.service_id_to_user_to_whitelist_status
+            .insert(service_id, &user_to_whitelist_status);
+
+        (revoked, indefinite_whitelist_count)
     }
 
     /// @notice Returns if the user is whitelised to use the service
     /// @param serviceId Service ID
     /// @param user User address
     /// @return isWhitelisted If the user is whitelisted
-    pub fn user_is_whitelisted(&self, service_id: &String, user: &Address) -> bool {
+    pub fn user_is_whitelisted(&self, service_id: &Bytes32, user: &Address) -> bool {
         if let Some(user_to_whitelist_status) =
             self.service_id_to_user_to_whitelist_status.get(service_id)
         {
-            user_to_whitelist_status.contains_key(user)
+            if let Some(whitelist_status) = user_to_whitelist_status.get(user) {
+                whitelist_status.indefinite_whitelist_count > U256::from(0)
+                    || whitelist_status.expiration_timestamp > env::block_timestamp()
+            } else {
+                false
+            }
         } else {
             false
         }
     }
 
-    pub fn whitelist_user(&mut self, service_id: &String, user: &Address) {
-        if let Some(mut user_to_whitelist_status) = self
+    /// ensure that the service_id is in the lookup map
+    fn ensure_service_exist(&mut self, service_id: &Bytes32) {
+        if !self
             .service_id_to_user_to_whitelist_status
-            .remove(service_id)
+            .contains_key(service_id)
         {
-            user_to_whitelist_status.insert(user, &WhitelistStatus::default());
-
             self.service_id_to_user_to_whitelist_status
-                .insert(service_id, &user_to_whitelist_status);
-        } else {
-            // create the service lookup first, and then add the user to the whitelist
-            self.add_service(service_id);
-            self.whitelist_user(service_id, user);
+                .insert(service_id, &LookupMap::new(StorageKeys::UserWhitelist));
         }
-    }
 
-    pub fn add_service(&mut self, service_id: &String) {
-        assert!(
-            !self
-                .service_id_to_user_to_whitelist_status
-                .contains_key(service_id),
-            "must not have an existing service_id"
-        );
-
-        self.service_id_to_user_to_whitelist_status
-            .insert(service_id, &LookupMap::new(StorageKeys::UserWhitelist));
+        if !self
+            .service_id_to_user_to_setter_to_indefinite_whitelist_status
+            .contains_key(service_id)
+        {
+            self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+                .insert(
+                    service_id,
+                    &LookupMap::new(StorageKeys::UserSetterIndefiniteWhitelist),
+                );
+        }
     }
 }
 
@@ -161,10 +275,10 @@ mod tests {
         // set up the mock context into the testing environment
         let context = get_context(to_valid_account("foo.near"));
         testing_env!(context.build());
-        let contract = Contract::new();
+        let whitelist = Whitelist::new();
         let user = Address::from([0; 20]);
-        let service = "service1".to_string();
-        assert!(!contract.user_is_whitelisted(&service, &user));
+        let service = [0; 32];
+        assert!(!whitelist.user_is_whitelisted(&service, &user));
     }
 
     #[test]
@@ -172,16 +286,16 @@ mod tests {
         // set up the mock context into the testing environment
         let context = get_context(to_valid_account("foo.near"));
         testing_env!(context.build());
-        let mut contract = Contract::new();
+        let mut whitelist = Whitelist::new();
 
         let user = Address::from([0; 20]);
-        let service = "service1".to_string();
+        let service = [0; 32];
 
-        assert!(!contract.user_is_whitelisted(&service, &user));
+        assert!(!whitelist.user_is_whitelisted(&service, &user));
 
         // whitelist the user
-        contract.whitelist_user(&service, &user);
-        assert!(contract.user_is_whitelisted(&service, &user));
+        whitelist.set_whitelist_expiration(&service, &user, 10_000);
+        assert!(whitelist.user_is_whitelisted(&service, &user));
     }
 
     #[test]
@@ -189,36 +303,23 @@ mod tests {
         // set up the mock context into the testing environment
         let context = get_context(to_valid_account("foo.near"));
         testing_env!(context.build());
-        let mut contract = Contract::new();
+        let mut whitelist = Whitelist::new();
 
         let user = Address::from([0; 20]);
-        let service = "service1".to_string();
+        let service = [0; 32];
 
         // whitelisted user
-        contract.whitelist_user(&service, &user);
+        whitelist.set_whitelist_expiration(&service, &user, 10_000);
 
         let mut buffer: Vec<u8> = vec![];
-        contract.serialize(&mut buffer).unwrap();
+        whitelist.serialize(&mut buffer).unwrap();
         dbg!(&buffer);
 
-        let contract1 = Contract::try_from_slice(&mut buffer).unwrap();
+        let whitelist1 = Whitelist::try_from_slice(&mut buffer).unwrap();
         // NOT whitelisted user
         let user1 = Address::from([1; 20]);
-        assert!(contract1.user_is_whitelisted(&service, &user));
+        assert!(whitelist1.user_is_whitelisted(&service, &user));
 
-        assert!(!contract1.user_is_whitelisted(&service, &user1));
-    }
-
-    #[test]
-    #[should_panic]
-    fn must_error_when_adding_same_service_multiple_times() {
-        let context = get_context(to_valid_account("foo.near"));
-        testing_env!(context.build());
-        let mut contract = Contract::new();
-
-        let service = "service1".to_string();
-
-        contract.add_service(&service);
-        contract.add_service(&service);
+        assert!(!whitelist1.user_is_whitelisted(&service, &user1));
     }
 }
