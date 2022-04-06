@@ -1,7 +1,7 @@
 use crate::{error, Int};
 
 /// The data point struct in the original API3 beacon server contract
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct DataPoint {
     pub value: Int,
     pub timestamp: u32,
@@ -43,11 +43,5 @@ impl From<DataPoint> for [u8; 36] {
         d.value.to_big_endian(&mut v[0..32]);
         v[32..].copy_from_slice(&d.timestamp.to_be_bytes());
         v
-    }
-}
-
-impl Default for DataPoint {
-    fn default() -> Self {
-        Self { value: Default::default(), timestamp: 0 }
     }
 }

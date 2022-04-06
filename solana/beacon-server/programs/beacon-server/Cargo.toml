@@ -13,8 +13,8 @@ no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
-default = ["api3-common/eth"]
+default = []
 
 [dependencies]
 anchor-lang = { version = "0.23.0", features = ["init-if-needed"] }
-api3-common = { path = "../../../../common", default-features = false, features = ["eth"] }
+api3-common = { path = "../../../../common" }

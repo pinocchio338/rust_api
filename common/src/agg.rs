@@ -1,5 +1,5 @@
-use std::ops::Div;
 use crate::{DataPoint, Int};
+use std::ops::Div;
 
 /// The Manager for handling multiple datapoints
 pub struct Aggregator;
@@ -10,7 +10,9 @@ impl Aggregator {
         let timestamp = 0u32;
         for d in datapoints {
             value.checked_add(d.value).expect("value overflow");
-            timestamp.checked_add(d.timestamp).expect("timestamp overflow");
+            timestamp
+                .checked_add(d.timestamp)
+                .expect("timestamp overflow");
         }
         let l = datapoints.len();
         DataPoint::new(value.div(l), timestamp / l as u32)

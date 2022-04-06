@@ -40,8 +40,8 @@ fn large_numbers() {
 
 #[test]
 fn max_numbers() {
-    let numbers = vec![U256([u64::MAX; 4]), U256::from([u8::MAX; 32])];
+    let numbers = vec![U256::MAX, U256::from([u8::MAX; 32])];
     let result = sort(&numbers);
-    let expected = vec![U256::from([u8::MAX; 32]), U256([u64::MAX; 4])];
+    let expected = vec![U256::from([u8::MAX; 32]), U256::MAX];
     assert_eq!(result, expected);
 }

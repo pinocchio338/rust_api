@@ -1,21 +1,8 @@
-use tiny_keccak::{Hasher, Keccak};
-
-#[cfg(feature = "simple-abi")]
-pub mod decode;
-#[cfg(feature = "simple-abi")]
-pub mod encode;
-#[cfg(feature = "simple-abi")]
-mod types;
-
-#[cfg(feature = "eth")]
 mod adaptor;
 
-#[cfg(feature = "eth")]
-pub use adaptor::{decode, encode, FixedBytes, Int, ParamType, Token, Uint, U256};
-#[cfg(feature = "simple-abi")]
-pub use types::*;
-
 use crate::{Bytes, Bytes32};
+pub use adaptor::{decode, encode, Address, FixedBytes, Int, ParamType, Token, Uint, U256};
+use tiny_keccak::{Hasher, Keccak};
 
 /// Rust implementation of solidity abi.encodePacked(...)
 pub fn encode_packed(items: &[Token]) -> (Bytes, String) {
@@ -66,13 +53,11 @@ pub fn to_eth_signed_message_hash(s: &[u8]) -> Bytes32 {
 #[cfg(feature = "recovery")]
 fn public_key_to_address(p: libsecp256k1::PublicKey) -> Address {
     let hash = keccak256(&p.serialize()[1..]);
-    let mut address = Address::default();
-    address.copy_from_slice(&hash[12..]);
-    address
+    Address::from_slice(&hash[12..])
 }
 
 #[cfg(feature = "recovery")]
-pub fn recover(message: &Bytes32, signature: &[u8; 65]) -> Result<Address, Error> {
+pub fn recover(message: &Bytes32, signature: &[u8; 65]) -> Result<Address, crate::Error> {
     let m = libsecp256k1::Message::parse(message);
 
     let mut s = [0u8; 64];
@@ -193,6 +178,6 @@ mod tests {
 
         let pubkey = crate::recover(&message, &s).unwrap();
         let address = hex::decode("65B0c8b91707B68C0B23388001B9dC7aab3f6A81").unwrap();
-        assert_eq!(pubkey.to_vec(), address);
+        assert_eq!(pubkey.as_bytes().to_vec(), address);
     }
 }

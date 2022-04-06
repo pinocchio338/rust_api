@@ -36,7 +36,9 @@ pub mod beacon_server {
 
         let timestamp = Uint::from(&timestamp);
 
-        let mut s = SolanaDataPointStorage { account: &mut ctx.accounts.datapoint };
+        let mut s = SolanaDataPointStorage {
+            account: &mut ctx.accounts.datapoint,
+        };
         process_beacon_update(&mut s, beacon_id, timestamp, data).map_err(map_error)?;
 
         Ok(())
