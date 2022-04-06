@@ -1,15 +1,15 @@
 mod abi;
+mod agg;
 mod beacon;
 mod datapoint;
 mod error;
-mod agg;
 mod util;
 
 pub use abi::*;
+pub use agg::Aggregator;
 pub use beacon::*;
 pub use datapoint::DataPoint;
 pub use error::Error;
-pub use agg::Aggregator;
 pub use util::*;
 
 pub type Bytes = Vec<u8>;

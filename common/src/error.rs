@@ -7,12 +7,10 @@ pub enum Error {
     BeaconDataNotFound,
     FulfillmentOlderThanBeacon,
     InvalidName(String),
+    EthAbiError(ethabi::Error),
 
     #[cfg(feature = "recovery")]
     Libsecp256k1Error(libsecp256k1::Error),
-
-    #[cfg(feature = "ethabi")]
-    EthAbiError(ethabi::Error),
 }
 
 #[cfg(feature = "recovery")]
@@ -32,10 +30,9 @@ impl From<Error> for u32 {
             Error::BeaconDataNotFound => 4,
             Error::FulfillmentOlderThanBeacon => 5,
             Error::InvalidName(_) => 6,
+            Error::EthAbiError(_) => 7,
             #[cfg(feature = "recovery")]
-            Error::Libsecp256k1Error(_) => 7,
-            #[cfg(feature = "ethabi")]
-            Error::EthAbiError(_) => 8,
+            Error::Libsecp256k1Error(_) => 8,
         }
     }
 }
