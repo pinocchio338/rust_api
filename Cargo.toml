@@ -3,3 +3,5 @@ members = [
     "common",
     "near/contract",
 ]
+exclude = [
+]
