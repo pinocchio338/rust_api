@@ -26,6 +26,8 @@ near_sdk::setup_alloc!();
 pub enum StorageKeys {
     Service,
     UserWhitelist,
+    ServiceWithSetter,
+    UserSetterInidifinteWhitelist,
 }
 
 #[near_bindgen]
@@ -40,6 +42,8 @@ struct WhitelistStatus {
 #[derive(BorshDeserialize, BorshSerialize)]
 struct Contract {
     service_id_to_user_to_whitelist_status: LookupMap<String, LookupMap<Address, WhitelistStatus>>,
+    service_id_to_user_to_setter_to_indifinite_whitelist_status:
+        LookupMap<String, LookupMap<Address, LookupMap<Address, bool>>>,
 }
 
 #[near_bindgen]
@@ -47,7 +51,43 @@ impl Contract {
     pub fn new() -> Self {
         Contract {
             service_id_to_user_to_whitelist_status: LookupMap::new(StorageKeys::Service),
+            service_id_to_user_to_setter_to_indifinite_whitelist_status: LookupMap::new(
+                StorageKeys::ServiceWithSetter,
+            ),
         }
+    }
+
+    /// @notice Extends the expiration of the temporary whitelist of the user
+    /// for the service
+    /// @param serviceId Service ID
+    /// @param user User address
+    /// @param expirationTimestamp Timestamp at which the temporary whitelist
+    /// will expire
+    pub fn extend_whitelist_expiration(
+        &mut self,
+        service_id: String,
+        user: Address,
+        expiration_timestamp: u64,
+    ) {
+        let mut user_to_whitelist_status = self
+            .service_id_to_user_to_whitelist_status
+            .remove(&service_id)
+            .expect("must contain this service");
+        let mut whitelist_status = user_to_whitelist_status
+            .remove(&user)
+            .expect("must contain this user");
+
+        assert!(
+            expiration_timestamp > whitelist_status.expiration_timestamp,
+            "Does not extend expiration"
+        );
+
+        whitelist_status.expiration_timestamp = expiration_timestamp;
+
+        user_to_whitelist_status.insert(&user, &whitelist_status);
+
+        self.service_id_to_user_to_whitelist_status
+            .insert(&service_id, &user_to_whitelist_status);
     }
 
     /// @notice Returns if the user is whitelised to use the service
