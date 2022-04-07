@@ -18,12 +18,12 @@ use std::io;
     Sub,
     SubAssign,
 )]
-pub struct U256(ethereum_types::U256);
+pub struct U256(crate::abi::U256);
 
 impl BorshDeserialize for U256 {
     fn deserialize(bytes: &mut &[u8]) -> Result<Self, io::Error> {
-        let values: [u64; 4] = BorshDeserialize::deserialize(bytes)?;
-        Ok(U256(ethereum_types::U256(values)))
+        let values: [u8; 32] = BorshDeserialize::deserialize(bytes)?;
+        Ok(U256(crate::abi::U256::from_big_endian(&values)))
     }
 }
 
@@ -32,24 +32,26 @@ impl BorshSerialize for U256 {
     where
         W: io::Write,
     {
-        BorshSerialize::serialize(&self.0 .0, writer)
+        let mut v = [0u8; 32];
+        self.0.to_big_endian(&mut v);
+        BorshSerialize::serialize(&v, writer)
     }
 }
 
 impl From<u128> for U256 {
     fn from(v: u128) -> Self {
-        U256(ethereum_types::U256::from(v))
+        U256(crate::abi::U256::from(v))
     }
 }
 
 /// Address is an alias to H160, which is [u8;20]
 #[derive(Serialize, Deserialize)]
-pub struct Address(ethereum_types::Address);
+pub struct Address(crate::Address);
 
 impl BorshDeserialize for Address {
     fn deserialize(bytes: &mut &[u8]) -> Result<Self, io::Error> {
         let values: [u8; 20] = BorshDeserialize::deserialize(bytes)?;
-        Ok(Address(ethereum_types::Address::from(values)))
+        Ok(Address(crate::Address::from(values)))
     }
 }
 
@@ -64,7 +66,7 @@ impl BorshSerialize for Address {
 
 impl From<[u8; 20]> for Address {
     fn from(bytes: [u8; 20]) -> Self {
-        Address(ethereum_types::Address::from(bytes))
+        Address(crate::Address::from(bytes))
     }
 }
 
