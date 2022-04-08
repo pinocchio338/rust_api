@@ -8,9 +8,13 @@ pub enum Error {
     FulfillmentOlderThanBeacon,
     InvalidName(String),
     EthAbiError(ethabi::Error),
-
     #[cfg(feature = "recovery")]
     Libsecp256k1Error(libsecp256k1::Error),
+    ParameterLengthMismatch,
+    LessThanTwoBeacons,
+    InvalidTimestamp,
+    InvalidSignature,
+    UpdatedValueOutdated,
 }
 
 #[cfg(feature = "recovery")]
@@ -33,6 +37,11 @@ impl From<Error> for u32 {
             Error::EthAbiError(_) => 7,
             #[cfg(feature = "recovery")]
             Error::Libsecp256k1Error(_) => 8,
+            Error::ParameterLengthMismatch => 9,
+            Error::LessThanTwoBeacons => 10,
+            Error::InvalidTimestamp => 11,
+            Error::InvalidSignature => 12,
+            Error::UpdatedValueOutdated => 13,
         }
     }
 }
