@@ -1,8 +1,9 @@
 import * as anchor from "@project-serum/anchor";
-import { expect } from "chai";
+import { assert, expect } from "chai";
 import nacl from 'tweetnacl';
 import * as fs from "fs";
 import { deriveBeaconId, encodeData } from "./utils";
+import { createInstructionWithPublicKey } from "./sig";
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -181,5 +182,70 @@ describe("beacon-server", () => {
   //   const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(dapiPDA);
   //   console.log(JSON.stringify(wrappedDataPoint));
   //   // expect(wrappedDataPoint.rawDatapoint).to.deep.eq(data);
+  // });
+
+  // it("updateDapiWithSignedData", async () => {
+  //   const dataPointId = Buffer.allocUnsafe(32);
+  //   const beaconID = Buffer.allocUnsafe(32);
+  //   const tempDAPIId = Buffer.from("1".padEnd(64, "0"), "hex");
+  //   const timestamp = Buffer.allocUnsafe(32);
+  //   const data = Buffer.allocUnsafe(32);
+  //   const sigs = Buffer.allocUnsafe(32);
+    
+  //   const msgStr = "The quick brown fox jumps over the lazy dog";
+  //   const messageBytes = Buffer.from(msgStr, "ascii");
+
+  //   const instruction = createInstructionWithPublicKey(
+  //     [
+  //       {
+  //         publicKey: airnode.publicKey.toBytes(),
+  //         message: messageBytes,
+  //         signature: nacl.sign.detached(messageBytes, airnode.secretKey),
+  //       },
+  //       {
+  //         publicKey: messageRelayer.publicKey.toBytes(),
+  //         message: messageBytes,
+  //         signature: nacl.sign.detached(messageBytes, messageRelayer.secretKey),
+  //       }
+  //     ],
+  //     0
+  //   );
+  //   // expect(instruction.data).to.deep.eq(sigVerifInstruction1.data);
+
+  //   const [dapiPDA] = await anchor.web3.PublicKey.findProgramAddress(
+  //     [
+  //       Buffer.from(anchor.utils.bytes.utf8.encode("datapoint")),
+  //       dataPointId
+  //     ],
+  //     program.programId
+  //   )
+
+  //   const actual = program.instruction.updateDapiWithSignedData(
+  //     dataPointId,
+  //     [beaconID],
+  //     [tempDAPIId],
+  //     [timestamp],
+  //     [data],
+  //     {
+  //       accounts: {
+  //         datapoint: dapiPDA,
+  //         user: messageRelayer.publicKey,
+  //         systemProgram: anchor.web3.SystemProgram.programId,
+  //       },
+  //       remainingAccounts: [
+  //         { isSigner: false, isWritable: false, pubkey: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY }
+  //       ],
+  //     }
+  //   );
+
+  //   const tx = new anchor.web3.Transaction();
+  //   tx.add(instruction);
+  //   tx.add(actual);
+
+  //   await anchor.web3.sendAndConfirmTransaction(
+  //     provider.connection,
+  //     tx,
+  //     [messageRelayer],
+  //   );
   // });
 });
