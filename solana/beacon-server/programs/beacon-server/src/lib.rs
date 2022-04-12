@@ -1,8 +1,8 @@
 mod utils;
 
-use crate::utils::SolanaDataPointStorage;
-use anchor_lang::prelude::*;
-use api3_common::{derive_beacon_id, ensure, process_beacon_update, Uint};
+use crate::utils::{DummySignatureManger, SolanaClock, SolanaHashMap};
+use anchor_lang::{prelude::borsh::maybestd::collections::HashMap, prelude::*};
+use api3_common::{derive_beacon_id, ensure, process_beacon_update, Bytes32, DataPoint, Uint};
 
 declare_id!("FRoo7m8Sf6ZAirGgnn3KopQymDtujWx818kcnRxzi23b");
 
@@ -20,7 +20,6 @@ fn map_error(e: api3_common::Error) -> anchor_lang::error::Error {
 #[program]
 pub mod beacon_server {
     use super::*;
-    use crate::utils::SolanaHashMap;
 
     /// Update a new beacon data point with signed data. The beacon id is used as
     /// the seed to generate pda for the Beacon data account.
@@ -39,8 +38,10 @@ pub mod beacon_server {
         )?;
 
         let timestamp = Uint::from(&timestamp);
-
-        let mut s = SolanaHashMap::new(vec![(beacon_id.clone(), &mut ctx.accounts.datapoint)]);
+        let mut s = SolanaHashMap::new(
+            vec![(beacon_id, &mut ctx.accounts.datapoint)],
+            HashMap::new(),
+        );
         process_beacon_update(&mut s, beacon_id, timestamp, data).map_err(map_error)?;
 
         Ok(())
@@ -69,31 +70,93 @@ pub mod beacon_server {
         utils::check_beacon_ids(&beacon_ids, &beacon_id_tuples)?;
         utils::check_dapi_id(&datapoint_key, &beacon_ids)?;
 
-        let account = &mut ctx.accounts.datapoint;
-        account.raw_datapoint = vec![1];
+        // Step 2. Prepare the accounts
+        let mut idx = 0;
+        let write = vec![(datapoint_key, &mut ctx.accounts.datapoint)];
+        let mut read = HashMap::new();
+        for (_, wrapped) in beacon_id_tuples {
+            let datapoint =
+                DataPoint::from(wrapped.raw_datapoint.clone()).expect("cannot parse datapoint");
+            read.insert(beacon_ids[idx], datapoint);
+            idx += 1;
+        }
+
+        ensure!(
+            idx == beacon_ids.len(),
+            Error::from(ProgramError::from(ERROR_NOT_ENOUGH_ACCOUNT))
+        )?;
+
+        let mut s = SolanaHashMap::new(write, read);
+        api3_common::update_dapi_with_beacons(&mut s, &beacon_ids).map_err(map_error)?;
         Ok(())
     }
 
     /// Updates a dAPI using data signed by the respective Airnodes
     /// without requiring a request or subscription. The beacons for which the
     /// signature is omitted will be read from the storage.
-    pub fn update_dapi_with_signed_data(
-        ctx: Context<DataPointAccount>,
+    pub fn update_dapi_with_signed_data<'b>(
+        ctx: Context<'_, '_, '_, 'b, DataPointAccount<'b>>,
         datapoint_key: [u8; 32],
-        _beacon_ids: Vec<[u8; 32]>,
-        _template_ids: Vec<[u8; 32]>,
-        _timestamps: Vec<[u8; 32]>,
-        data: Vec<[u8; 32]>,
+        airnodes: Vec<Vec<u8>>,
+        beacon_ids: Vec<[u8; 32]>,
+        template_ids: Vec<[u8; 32]>,
+        timestamps: Vec<[u8; 32]>,
+        data: Vec<Vec<u8>>,
     ) -> Result<()> {
-        msg!("delete this in actual implementation: {:?}", datapoint_key);
-
-        let instruction_acc = &mut ctx
-            .remaining_accounts
-            .into_iter()
+        // Step 1. Check signature
+        let account_iter = &mut ctx.remaining_accounts.iter();
+        let instruction_acc = account_iter
             .next()
-            .ok_or(Error::from(ProgramError::from(ERROR_NOT_ENOUGH_ACCOUNT)))?;
+            .ok_or_else(|| Error::from(ProgramError::from(ERROR_NOT_ENOUGH_ACCOUNT)))?;
         let sig_count = ensure_batch_signed(instruction_acc, &data)?;
 
+        let mut idx = 0usize;
+        let beacon_id_tuples = account_iter
+            .clone()
+            .map(|item| -> (Pubkey, Bytes32) {
+                let r = (*item.key, template_ids[idx]);
+                idx += 1;
+                r
+            })
+            .collect::<Vec<(Pubkey, Bytes32)>>();
+        utils::check_beacon_ids_with_templates(&beacon_ids, &beacon_id_tuples)?;
+        utils::check_dapi_id(&datapoint_key, &beacon_ids)?;
+
+        let sig_checker = DummySignatureManger::new(sig_count);
+
+        // Step 2. Prepare the accounts
+        let mut idx = 0;
+        let write = vec![(datapoint_key, &mut ctx.accounts.datapoint)];
+        let mut read = HashMap::new();
+        for account in account_iter {
+            let beacon_offset = idx + sig_count;
+            let wrapped: Account<WrappedDataPoint> = Account::try_from(account)?;
+            let datapoint =
+                DataPoint::from(wrapped.raw_datapoint.clone()).expect("cannot parse datapoint");
+            read.insert(beacon_ids[beacon_offset], datapoint);
+            idx += 1;
+        }
+        idx += sig_count;
+
+        ensure!(
+            idx == beacon_ids.len(),
+            Error::from(ProgramError::from(ERROR_NOT_ENOUGH_ACCOUNT))
+        )?;
+
+        let mut s = SolanaHashMap::new(write, read);
+        let clock = SolanaClock::new(Clock::get().unwrap().unix_timestamp as u32);
+
+        api3_common::update_dapi_with_signed_data(
+            &mut s,
+            &sig_checker,
+            &clock,
+            airnodes,
+            template_ids,
+            timestamps,
+            data,
+            (0..idx).into_iter().map(|_| vec![]).collect(),
+        )
+        .map_err(map_error)?;
         Ok(())
     }
 
@@ -191,7 +254,7 @@ pub struct WrappedDataPointId {
     bump: u8,
 }
 
-fn ensure_batch_signed(instruction_acc: &AccountInfo, data: &Vec<[u8; 32]>) -> Result<usize> {
+fn ensure_batch_signed(instruction_acc: &AccountInfo, data: &[Vec<u8>]) -> Result<usize> {
     ensure!(
         *instruction_acc.key == anchor_lang::solana_program::sysvar::instructions::id(),
         Error::from(ProgramError::from(ERROR_INVALID_SYSVAR_INSTRUCTIONS_KEY))
@@ -214,3 +277,82 @@ fn ensure_batch_signed(instruction_acc: &AccountInfo, data: &Vec<[u8; 32]>) -> R
 
     Ok(sig_count)
 }
+
+// /// Create the beacon accounts. We only create up till `sig_count`, as only `sig_count` number
+// /// of signatures are provided
+// fn check_or_create_account<'a>(
+//     account_iter: &mut Iter<AccountInfo<'a>>,
+//     beacon_ids: &Vec<Bytes32>,
+//     payer_info: &AccountInfo<'a>,
+//     program_id: &Pubkey,
+//     system_info: &AccountInfo<'a>,
+//     sig_count: usize
+// ) -> Result<()> {
+//     let mut idx = 0;
+//     for a in account_iter {
+//         if a.data_is_empty() {
+//             create_and_serialize_account_signed(
+//                 payer_info,
+//                 &a,
+//                 &[DATAPOINT_SEED.as_bytes(), &beacon_ids[idx]],
+//                 program_id,
+//                 system_info,
+//                 &Rent::get()?,
+//                 DATAPOINT_ACCOUNT_SIZE,
+//             )?;
+//         }
+//         idx += 1;
+//         if idx >= sig_count {
+//             break;
+//         }
+//     }
+//     Ok(())
+// }
+//
+// pub fn create_and_serialize_account_signed<'a>(
+//     payer_info: &AccountInfo<'a>,
+//     account_info: &AccountInfo<'a>,
+//     account_address_seeds: &[&[u8]],
+//     program_id: &Pubkey,
+//     system_info: &AccountInfo<'a>,
+//     rent: &Rent,
+//     account_size: usize,
+// ) -> Result<()> {
+//     // Get PDA and assert it's the same as the requested account address
+//     let (account_address, bump_seed) =
+//         Pubkey::find_program_address(account_address_seeds, program_id);
+//
+//     if account_address != *account_info.key {
+//         msg!(
+//             "Create account with PDA: {:?} was requested while PDA: {:?} was expected",
+//             account_info.key,
+//             account_address
+//         );
+//         return Err(Error::from(ProgramError::from(ERROR_INVALID_ACCOUNT_SEED)));
+//     }
+//
+//     let create_account_instruction =
+//         anchor_lang::solana_program::system_instruction::create_account(
+//             payer_info.key,
+//             account_info.key,
+//             rent.minimum_balance(account_size),
+//             account_size as u64,
+//             program_id,
+//         );
+//
+//     let mut signers_seeds = account_address_seeds.to_vec();
+//     let bump = &[bump_seed];
+//     signers_seeds.push(bump);
+//
+//     anchor_lang::solana_program::program::invoke_signed(
+//         &create_account_instruction,
+//         &[
+//             payer_info.clone(),
+//             account_info.clone(),
+//             system_info.clone(),
+//         ],
+//         &[&signers_seeds[..]],
+//     )?;
+//
+//     Ok(())
+// }
