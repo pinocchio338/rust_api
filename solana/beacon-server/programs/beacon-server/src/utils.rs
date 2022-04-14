@@ -2,7 +2,7 @@ use crate::WrappedDataPoint;
 use anchor_lang::accounts::account::Account;
 use anchor_lang::prelude::borsh::maybestd::collections::HashMap;
 use anchor_lang::prelude::*;
-use api3_common::{Bytes32, DataPoint, DataPointStorage, SignatureManger, TimestampChecker};
+use api3_common::{Bytes32, DataPoint, Storage, SignatureManger, TimestampChecker};
 
 pub type AccountRef<'info> = Account<'info, WrappedDataPoint>;
 
@@ -24,7 +24,7 @@ impl<'info, 'account> SolanaHashMap<'info, 'account> {
     }
 }
 
-impl<'info, 'account> DataPointStorage for SolanaHashMap<'info, 'account> {
+impl<'info, 'account> Storage<DataPoint> for SolanaHashMap<'info, 'account> {
     fn get(&self, k: &Bytes32) -> Option<DataPoint> {
         // let k = self.key(key);
         match self.read.get(k) {

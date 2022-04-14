@@ -19,3 +19,8 @@ anchor build
 export BROWSER=""
 anchor test
 ```
+
+TODO:
+- Check gas fee
+- Provide devnet script
+- Solana wallet from seeds

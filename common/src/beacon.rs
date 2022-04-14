@@ -1,13 +1,15 @@
+use crate::access::AccessControlRegistry;
+use crate::whitelist::Whitelist;
 use crate::*;
 
-const ONE_HOUR_SEC: u32 = 3600000;
-const FIFTEEN_MINUTES_SEC: u32 = 900000;
+const ONE_HOUR_IN_MS: u32 = 3600000;
+const FIFTEEN_MINUTES_IN_MS: u32 = 900000;
 
 /// Generic storage trait. Used for the common processing logic so that each chain could
 /// have their own implementation.
-pub trait DataPointStorage {
-    fn get(&self, key: &Bytes32) -> Option<DataPoint>;
-    fn store(&mut self, key: Bytes32, datapoint: DataPoint);
+pub trait Storage<T> {
+    fn get(&self, key: &Bytes32) -> Option<T>;
+    fn store(&mut self, key: Bytes32, t: T);
 }
 
 /// Public trait that handles signature verification across different chains
@@ -28,16 +30,108 @@ pub trait TimestampChecker {
     fn is_valid(&self, timestamp: u32) -> bool {
         let c = self.current_timestamp();
         timestamp
-            .checked_add(ONE_HOUR_SEC)
+            .checked_add(ONE_HOUR_IN_MS)
             .expect("Invalid timestamp")
             > c
-            && timestamp < c + FIFTEEN_MINUTES_SEC
+            && timestamp < c + FIFTEEN_MINUTES_IN_MS
     }
+}
+
+/// Sets the data point ID the name points to
+/// While a data point ID refers to a specific Beacon or dAPI, names
+/// provide a more abstract interface for convenience. This means a name
+/// that was pointing at a Beacon can be pointed to a dAPI, then another
+/// dAPI, etc.
+/// `name` Human-readable name
+/// `data_point_id` Data point ID the name will point to
+pub fn set_name<D: Storage<Bytes32>, A: AccessControlRegistry>(
+    name: Bytes32,
+    data_point_id: Bytes32,
+    msg_sender: &A::Address,
+    access: &A,
+    storage: &mut D,
+) -> Result<(), Error> {
+    ensure!(name != Bytes32::default(), Error::InvalidData)?;
+    ensure!(data_point_id != Bytes32::default(), Error::InvalidData)?;
+    let role = access.find_role_by_string(A::NAME_SETTER_ROLE_NAME);
+    ensure!(access.has_role(&role, msg_sender), Error::AccessDenied)?;
+
+    storage.store(
+        keccak_packed(&[Token::FixedBytes(name.to_vec())]),
+        data_point_id,
+    );
+
+    Ok(())
+}
+
+/// Reads the data point with ID
+/// `data_point_id` Data point ID
+/// `value` Data point value
+/// `timestamp` Data point timestamp
+pub fn read_with_data_point_id<
+    D: Storage<DataPoint>,
+    A: AccessControlRegistry,
+    W: Whitelist<Address = A::Address>,
+>(
+    data_point_id: &Bytes32,
+    msg_sender: &A::Address,
+    d: &D,
+    a: &A,
+    w: &W,
+) -> Result<(Int, u32), Error> {
+    ensure!(
+        reader_can_read_data_point(data_point_id, msg_sender, a, w),
+        Error::AccessDenied
+    )?;
+    let data_point = d.get(data_point_id).ok_or(Error::BeaconDataNotFound)?;
+    Ok((data_point.value, data_point.timestamp))
+}
+
+/// Reads the data point with name
+/// The read data point may belong to a Beacon or dAPI. The reader
+/// must be whitelisted for the hash of the data point name.
+/// `name` Data point name
+pub fn read_with_name<
+    D: Storage<DataPoint>,
+    H: Storage<Bytes32>,
+    A: AccessControlRegistry,
+    W: Whitelist<Address = A::Address>,
+>(
+    name: Bytes32,
+    msg_sender: &A::Address,
+    d: &D,
+    h: &H,
+    a: &A,
+    w: &W,
+) -> Result<(Int, u32), Error> {
+    let name_hash = keccak_packed(&[Token::FixedBytes(name.to_vec())]);
+    ensure!(
+        reader_can_read_data_point(&name_hash, msg_sender, a, w),
+        Error::AccessDenied
+    )?;
+    let key = h.get(&name_hash).ok_or(Error::NameHashNotFound)?;
+    let data_point = d.get(&key).ok_or(Error::BeaconDataNotFound)?;
+    Ok((data_point.value, data_point.timestamp))
+}
+
+/// @notice Returns if a reader can read the data point
+/// `data_point_id` Data point ID (or data point name hash)
+/// `reader` Reader address
+pub fn reader_can_read_data_point<A: AccessControlRegistry, W: Whitelist<Address = A::Address>>(
+    data_point_id: &Bytes32,
+    reader: &A::Address,
+    access: &A,
+    whitelist: &W,
+) -> bool {
+    let role = access.find_role_by_string(A::UNLIMITED_READER_ROLE_NAME);
+    reader.is_empty()
+        || whitelist.user_is_whitelisted(data_point_id, reader)
+        || access.has_role(&role, reader)
 }
 
 /// Updates the dAPI that is specified by the beacon IDs
 /// `beacon_ids` is the list of beacon ids to perform aggregation
-pub fn update_dapi_with_beacons<D: DataPointStorage>(
+pub fn update_dapi_with_beacons<D: Storage<DataPoint>>(
     d: &mut D,
     beacon_ids: &[Bytes32],
 ) -> Result<(), Error> {
@@ -70,7 +164,7 @@ pub fn update_dapi_with_beacons<D: DataPointStorage>(
 
 #[allow(clippy::too_many_arguments)]
 pub fn update_dapi_with_signed_data<
-    D: DataPointStorage,
+    D: Storage<DataPoint>,
     S: SignatureManger,
     T: TimestampChecker,
 >(
@@ -180,7 +274,7 @@ pub fn decode_fulfillment_data(data: &Bytes) -> Result<Int, Error> {
     }
 }
 
-pub fn process_beacon_update<D: DataPointStorage>(
+pub fn process_beacon_update<D: Storage<DataPoint>>(
     s: &mut D,
     beacon_id: Bytes32,
     timestamp: Uint,
