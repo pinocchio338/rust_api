@@ -109,7 +109,9 @@ pub mod beacon_server {
             .next()
             .ok_or_else(|| Error::from(ProgramError::from(ERROR_NOT_ENOUGH_ACCOUNT)))?;
         let sig_count = ensure_batch_signed(instruction_acc, &data)?;
+        let sig_checker = DummySignatureManger::new(sig_count);
 
+        // Step 2. Check the beacon id accounts are correct
         let mut idx = 0usize;
         let beacon_id_tuples = account_iter
             .clone()
@@ -122,9 +124,7 @@ pub mod beacon_server {
         utils::check_beacon_ids_with_templates(&beacon_ids, &beacon_id_tuples)?;
         utils::check_dapi_id(&datapoint_key, &beacon_ids)?;
 
-        let sig_checker = DummySignatureManger::new(sig_count);
-
-        // Step 2. Prepare the accounts
+        // Step 3. Extract and prepare the data for beacon ids from storage
         let mut idx = 0;
         let write = vec![(datapoint_key, &mut ctx.accounts.datapoint)];
         let mut read = HashMap::new();
@@ -143,6 +143,7 @@ pub mod beacon_server {
             Error::from(ProgramError::from(ERROR_NOT_ENOUGH_ACCOUNT))
         )?;
 
+        // Step 4. Execute update_dapi_with_signed_data process
         let mut s = SolanaHashMap::new(write, read);
         let clock = SolanaClock::new(Clock::get().unwrap().unix_timestamp as u32);
 
@@ -171,6 +172,7 @@ pub mod beacon_server {
         _name: [u8; 32],
         _data_point_id: [u8; 32],
     ) -> Result<()> {
+
         msg!(
             "delete this in actual implementation: {:?}",
             datapoint_id_key
