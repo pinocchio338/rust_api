@@ -53,7 +53,7 @@ pub fn set_name<D: Storage<Bytes32>, A: AccessControlRegistry>(
 ) -> Result<(), Error> {
     ensure!(name != Bytes32::default(), Error::InvalidData)?;
     ensure!(data_point_id != Bytes32::default(), Error::InvalidData)?;
-    let role = access.find_role_by_string(A::NAME_SETTER_ROLE_NAME);
+    let role = access.find_static_role(StaticRole::NameSetterRole);
     ensure!(access.has_role(&role, msg_sender), Error::AccessDenied)?;
 
     storage.store(
@@ -123,8 +123,8 @@ pub fn reader_can_read_data_point<A: AccessControlRegistry, W: Whitelist<Address
     access: &A,
     whitelist: &W,
 ) -> bool {
-    let role = access.find_role_by_string(A::UNLIMITED_READER_ROLE_NAME);
-    reader.is_empty()
+    let role = access.find_static_role(StaticRole::UnlimitedReaderRole);
+    reader.is_zero()
         || whitelist.user_is_whitelisted(data_point_id, reader)
         || access.has_role(&role, reader)
 }

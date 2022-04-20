@@ -1,3 +1,4 @@
+mod access;
 mod utils;
 
 use crate::utils::{DummySignatureManger, SolanaClock, SolanaHashMap};
@@ -172,7 +173,6 @@ pub mod beacon_server {
         _name: [u8; 32],
         _data_point_id: [u8; 32],
     ) -> Result<()> {
-
         msg!(
             "delete this in actual implementation: {:?}",
             datapoint_id_key
@@ -246,14 +246,26 @@ pub struct DataPointAccount<'info> {
 
 #[account]
 pub struct WrappedDataPoint {
-    raw_datapoint: Vec<u8>,
-    bump: u8,
+    pub raw_datapoint: Vec<u8>,
+    pub bump: u8,
 }
 
 #[account]
 pub struct WrappedDataPointId {
-    datapoint_id: [u8; 32],
-    bump: u8,
+    pub datapoint_id: [u8; 32],
+    pub bump: u8,
+}
+
+#[account]
+pub struct WrappedUserWithRole {
+    pub has_role: bool,
+    pub bump: u8,
+}
+
+#[account]
+pub struct WrappedRoleDetail {
+    pub admin_role: [u8; 32],
+    pub bump: u8,
 }
 
 fn ensure_batch_signed(instruction_acc: &AccountInfo, data: &[Vec<u8>]) -> Result<usize> {

@@ -2,7 +2,7 @@ use crate::WrappedDataPoint;
 use anchor_lang::accounts::account::Account;
 use anchor_lang::prelude::borsh::maybestd::collections::HashMap;
 use anchor_lang::prelude::*;
-use api3_common::{Bytes32, DataPoint, Storage, SignatureManger, TimestampChecker};
+use api3_common::{Bytes32, DataPoint, SignatureManger, Storage, TimestampChecker};
 
 pub type AccountRef<'info> = Account<'info, WrappedDataPoint>;
 

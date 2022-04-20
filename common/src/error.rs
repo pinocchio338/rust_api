@@ -18,6 +18,8 @@ pub enum Error {
     AccessDenied,
     NameHashNotFound,
     RoleDescriptionEmpty,
+    InvalidAddress,
+    OnlyRenounceRolesForSelf,
 }
 
 #[cfg(feature = "recovery")]
@@ -48,6 +50,8 @@ impl From<Error> for u32 {
             Error::AccessDenied => 14,
             Error::NameHashNotFound => 15,
             Error::RoleDescriptionEmpty => 16,
+            Error::InvalidAddress => 17,
+            Error::OnlyRenounceRolesForSelf => 18,
         }
     }
 }
