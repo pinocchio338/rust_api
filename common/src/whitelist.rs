@@ -1,5 +1,4 @@
-use crate::Bytes32;
-use crate::Empty;
+use crate::{Bytes32, Zero};
 
 /// Trait that implements temporary and permanent whitelists for
 /// multiple services identified with a hash
@@ -16,7 +15,7 @@ use crate::Empty;
 /// authorization scheme.
 pub trait Whitelist {
     /// The address type for the chain
-    type Address: AsRef<[u8]> + Empty;
+    type Address: AsRef<[u8]> + Zero;
 
     /// Returns if the user is whitelised to use the service
     /// `service_id` Service ID
