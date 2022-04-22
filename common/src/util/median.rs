@@ -13,6 +13,18 @@ pub fn median(array: &[U256]) -> U256 {
     }
 }
 
+/// TODO: find a way to unify this with the non-wrapped one
+pub fn median_wrapped_u256(array: &[crate::types::U256]) -> crate::types::U256 {
+    let len = array.len();
+    let array = sort(array);
+    let mid: usize = len / 2;
+    if len % 2 == 1 {
+        array[mid]
+    } else {
+        (array[mid - 1] + array[mid]) / 2
+    }
+}
+
 #[test]
 fn ideal_median() {
     let numbers = vec![U256::from(1_i128), U256::from(2_i128), U256::from(3_i128)];

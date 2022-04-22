@@ -1,11 +1,12 @@
 mod abi;
 mod access;
+mod access_control_registry;
 mod agg;
 mod beacon;
 mod datapoint;
 mod error;
 pub mod types;
-mod util;
+pub mod util;
 mod whitelist;
 
 pub use abi::*;
@@ -15,6 +16,7 @@ pub use beacon::*;
 pub use datapoint::DataPoint;
 pub use error::Error;
 pub use util::*;
+pub use whitelist::Whitelist;
 
 pub type Bytes = Vec<u8>;
 pub type Bytes32 = [u8; 32];

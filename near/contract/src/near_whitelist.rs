@@ -1,4 +1,4 @@
-/// derived from Whitelist.sol
+/// derived from NearWhitelist.sol
 ///
 /// @title Contract that implements temporary and permanent whitelists for
 /// multiple services identified with a hash
@@ -17,9 +17,12 @@ use near_sdk::BorshStorageKey;
 use near_sdk::{env, near_bindgen};
 use std::io;
 
-use api3_common::types::Address;
+use crate::ensure;
+use crate::Address;
 use api3_common::types::U256;
 use api3_common::Bytes32;
+use api3_common::Error;
+use api3_common::Whitelist;
 
 near_sdk::setup_alloc!();
 
@@ -31,7 +34,7 @@ pub enum StorageKeys {
     UserSetterIndefiniteWhitelist,
 }
 
-#[near_bindgen]
+//#[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, Default)]
 struct WhitelistStatus {
     expiration_timestamp: u64,
@@ -41,15 +44,14 @@ struct WhitelistStatus {
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
-struct Whitelist {
+struct NearWhitelist {
     service_id_to_user_to_whitelist_status: LookupMap<Bytes32, LookupMap<Address, WhitelistStatus>>,
     service_id_to_user_to_setter_to_indefinite_whitelist_status:
         LookupMap<Bytes32, LookupMap<Address, LookupMap<Address, bool>>>,
 }
 
-#[near_bindgen]
-impl Whitelist {
-    pub fn new() -> Self {
+impl Default for NearWhitelist {
+    fn default() -> Self {
         Self {
             service_id_to_user_to_whitelist_status: LookupMap::new(StorageKeys::Service),
             service_id_to_user_to_setter_to_indefinite_whitelist_status: LookupMap::new(
@@ -57,14 +59,38 @@ impl Whitelist {
             ),
         }
     }
+}
 
-    /// @notice Extends the expiration of the temporary whitelist of the user
-    /// for the service
-    /// @param serviceId Service ID
-    /// @param user User address
-    /// @param expirationTimestamp Timestamp at which the temporary whitelist
-    /// will expire
-    pub fn extend_whitelist_expiration(
+impl NearWhitelist {
+    /// ensure that the service_id is in the lookup map
+    fn ensure_service_exist(&mut self, service_id: &Bytes32) {
+        if !self
+            .service_id_to_user_to_whitelist_status
+            .contains_key(service_id)
+        {
+            self.service_id_to_user_to_whitelist_status
+                .insert(service_id, &LookupMap::new(StorageKeys::UserWhitelist));
+        }
+
+        if !self
+            .service_id_to_user_to_setter_to_indefinite_whitelist_status
+            .contains_key(service_id)
+        {
+            self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+                .insert(
+                    service_id,
+                    &LookupMap::new(StorageKeys::UserSetterIndefiniteWhitelist),
+                );
+        }
+    }
+}
+
+#[near_bindgen]
+impl Whitelist for NearWhitelist {
+    type Address = Address;
+    type U256 = U256;
+
+    fn extend_whitelist_expiration(
         &mut self,
         service_id: &Bytes32,
         user: &Address,
@@ -78,9 +104,9 @@ impl Whitelist {
             .remove(&user)
             .expect("must contain this user");
 
-        assert!(
+        ensure!(
             expiration_timestamp > whitelist_status.expiration_timestamp,
-            "Does not extend expiration"
+            Error::DoesNotExtendExpiration
         );
 
         whitelist_status.expiration_timestamp = expiration_timestamp;
@@ -91,14 +117,7 @@ impl Whitelist {
             .insert(service_id, &user_to_whitelist_status);
     }
 
-    /// @notice Sets the expiration of the temporary whitelist of the user for
-    /// the service
-    /// @dev Unlike `extendWhitelistExpiration()`, this can hasten expiration
-    /// @param serviceId Service ID
-    /// @param user User address
-    /// @param expirationTimestamp Timestamp at which the temporary whitelist
-    /// will expire
-    pub fn set_whitelist_expiration(
+    fn set_whitelist_expiration(
         &mut self,
         service_id: &Bytes32,
         user: &Address,
@@ -128,15 +147,7 @@ impl Whitelist {
             .insert(&service_id, &user_to_whitelist_status);
     }
 
-    /// @notice Sets the indefinite whitelist status of the user for the
-    /// service
-    /// @dev As long as at least there is at least one account that has set the
-    /// indefinite whitelist status of the user for the service as true, the
-    /// user will be considered whitelisted
-    /// @param serviceId Service ID
-    /// @param user User address
-    /// @param status Indefinite whitelist status
-    pub fn set_indefinite_whitelist_status(
+    fn set_indefinite_whitelist_status(
         &mut self,
         service_id: &Bytes32,
         user: &Address,
@@ -209,7 +220,7 @@ impl Whitelist {
     /// @param serviceId Service ID
     /// @param user User address
     /// @return isWhitelisted If the user is whitelisted
-    pub fn user_is_whitelisted(&self, service_id: &Bytes32, user: &Address) -> bool {
+    fn user_is_whitelisted(&self, service_id: &Bytes32, user: &Address) -> bool {
         if let Some(user_to_whitelist_status) =
             self.service_id_to_user_to_whitelist_status.get(service_id)
         {
@@ -221,28 +232,6 @@ impl Whitelist {
             }
         } else {
             false
-        }
-    }
-
-    /// ensure that the service_id is in the lookup map
-    fn ensure_service_exist(&mut self, service_id: &Bytes32) {
-        if !self
-            .service_id_to_user_to_whitelist_status
-            .contains_key(service_id)
-        {
-            self.service_id_to_user_to_whitelist_status
-                .insert(service_id, &LookupMap::new(StorageKeys::UserWhitelist));
-        }
-
-        if !self
-            .service_id_to_user_to_setter_to_indefinite_whitelist_status
-            .contains_key(service_id)
-        {
-            self.service_id_to_user_to_setter_to_indefinite_whitelist_status
-                .insert(
-                    service_id,
-                    &LookupMap::new(StorageKeys::UserSetterIndefiniteWhitelist),
-                );
         }
     }
 }
@@ -275,8 +264,8 @@ mod tests {
         // set up the mock context into the testing environment
         let context = get_context(to_valid_account("foo.near"));
         testing_env!(context.build());
-        let whitelist = Whitelist::new();
-        let user = Address::from([0; 20]);
+        let whitelist = NearWhitelist::default();
+        let user = Address::from("test.near");
         let service = [0; 32];
         assert!(!whitelist.user_is_whitelisted(&service, &user));
     }
@@ -286,9 +275,9 @@ mod tests {
         // set up the mock context into the testing environment
         let context = get_context(to_valid_account("foo.near"));
         testing_env!(context.build());
-        let mut whitelist = Whitelist::new();
+        let mut whitelist = NearWhitelist::default();
 
-        let user = Address::from([0; 20]);
+        let user = Address::from("test.near");
         let service = [0; 32];
 
         assert!(!whitelist.user_is_whitelisted(&service, &user));
@@ -303,9 +292,9 @@ mod tests {
         // set up the mock context into the testing environment
         let context = get_context(to_valid_account("foo.near"));
         testing_env!(context.build());
-        let mut whitelist = Whitelist::new();
+        let mut whitelist = NearWhitelist::default();
 
-        let user = Address::from([0; 20]);
+        let user = Address::from("test.near");
         let service = [0; 32];
 
         // whitelisted user
@@ -315,9 +304,9 @@ mod tests {
         whitelist.serialize(&mut buffer).unwrap();
         dbg!(&buffer);
 
-        let whitelist1 = Whitelist::try_from_slice(&mut buffer).unwrap();
+        let whitelist1 = NearWhitelist::try_from_slice(&mut buffer).unwrap();
         // NOT whitelisted user
-        let user1 = Address::from([1; 20]);
+        let user1 = Address::from("test1.near");
         assert!(whitelist1.user_is_whitelisted(&service, &user));
 
         assert!(!whitelist1.user_is_whitelisted(&service, &user1));
