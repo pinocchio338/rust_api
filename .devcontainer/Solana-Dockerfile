@@ -36,7 +36,7 @@ ENV SOLANA_CLI="v1.9.13"
 RUN sh -c "$(curl -sSfL https://release.solana.com/${SOLANA_CLI}/install)"
 
 # Install anchor.
-ENV ANCHOR_CLI="v0.23.0"
+ENV ANCHOR_CLI="v0.24.2"
 RUN cargo install --git https://github.com/project-serum/anchor --tag ${ANCHOR_CLI} anchor-cli --locked
 
 # in case anchor uses browser env for unit tests, version update

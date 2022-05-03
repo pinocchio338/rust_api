@@ -67,3 +67,14 @@ export async function deriveDatapointPDA(dataPointId: Buffer, programId: anchor.
     );
     return pda;
 }
+
+export async function deriveNameHashPDA(nameHash: Buffer, programId: anchor.web3.PublicKey): Promise<anchor.web3.PublicKey> {
+    const [pda] = await anchor.web3.PublicKey.findProgramAddress(
+        [
+          Buffer.from(anchor.utils.bytes.utf8.encode("hashed-name")),
+          nameHash
+        ],
+        programId
+    );
+    return pda;
+}

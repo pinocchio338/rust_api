@@ -1,8 +1,8 @@
 use crate::{WrappedRoleDetail, WrappedUserWithRole};
 use anchor_lang::accounts::account::Account;
-use anchor_lang::prelude::{ borsh::maybestd::collections::HashMap, msg };
+use anchor_lang::prelude::{borsh::maybestd::collections::HashMap, msg};
 use anchor_lang::solana_program::pubkey::Pubkey;
-use api3_common::{AccessControlRegistry, Bytes32, Error, ensure};
+use api3_common::{ensure, AccessControlRegistry, Bytes32, Error};
 
 const ROLE_SEED: &str = "role";
 const MEMBER_SEED: &str = "member";
@@ -33,14 +33,9 @@ impl SolanaAccessControl<'_, '_> {
         address
     }
 
-    fn hash_role(
-        &self,
-        role: &Bytes32,
-    ) -> Pubkey {
-        let (address, _) = Pubkey::find_program_address(
-            &[ROLE_SEED.as_bytes(), role],
-            &self.program_id,
-        );
+    fn hash_role(&self, role: &Bytes32) -> Pubkey {
+        let (address, _) =
+            Pubkey::find_program_address(&[ROLE_SEED.as_bytes(), role], &self.program_id);
         address
     }
 }
@@ -48,9 +43,13 @@ impl SolanaAccessControl<'_, '_> {
 impl AccessControlRegistry for SolanaAccessControl<'_, '_> {
     type Address = Bytes32;
 
-    fn manager(&self) -> &Self::Address { &self.manager }
+    fn manager(&self) -> &Self::Address {
+        &self.manager
+    }
 
-    fn admin_role_description(&self) -> String { self.admin_role_description.clone() }
+    fn admin_role_description(&self) -> String {
+        self.admin_role_description.clone()
+    }
 
     fn has_role(&self, role: &Bytes32, who: &Self::Address) -> bool {
         let key = self.hash_role_with_who(role, who);
@@ -110,6 +109,44 @@ impl AccessControlRegistry for SolanaAccessControl<'_, '_> {
                 }
             }
         }
+        Ok(())
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct DummyAccessControl {
+    manager: Bytes32,
+}
+
+impl AccessControlRegistry for DummyAccessControl {
+    type Address = Bytes32;
+
+    fn manager(&self) -> &Self::Address {
+        &self.manager
+    }
+
+    fn admin_role_description(&self) -> String {
+        String::from("hello")
+    }
+
+    fn has_role(&self, _role: &Bytes32, _who: &Self::Address) -> bool {
+        true
+    }
+
+    fn grant_role(&mut self, _role: &Bytes32, _who: &Self::Address) {}
+
+    fn get_role_admin(&self, _role: &Bytes32) -> Option<Bytes32> {
+        Some(Bytes32::default())
+    }
+
+    fn set_role_admin(&mut self, _role: &Bytes32, _role_admin: Bytes32) {}
+
+    fn renounce_role(
+        &mut self,
+        _role: &Bytes32,
+        _account: &Self::Address,
+        _msg_sender: &Self::Address,
+    ) -> Result<(), Error> {
         Ok(())
     }
 }

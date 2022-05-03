@@ -1,8 +1,8 @@
 import * as anchor from "@project-serum/anchor";
-import { assert, expect } from "chai";
+import { expect } from "chai";
 import nacl from 'tweetnacl';
 import * as fs from "fs";
-import { bufferU64BE, createRawDatapointBuffer, deriveBeaconId, deriveDApiId, deriveDatapointPDA, encodeData, prepareMessage } from "./utils";
+import { bufferU64BE, createRawDatapointBuffer, deriveBeaconId, deriveDApiId, deriveDatapointPDA, deriveNameHashPDA, encodeData, keccak256Packed, prepareMessage } from "./utils";
 import { createInstructionWithPublicKey } from "./sig";
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
@@ -30,11 +30,6 @@ async function newUpdateBeaconWithSignedDataTxn(
   storageFunder: anchor.web3.Keypair,
   txnRelayerKey: anchor.web3.PublicKey,
 ): Promise<[Uint8Array, Buffer]> {
-  // const bufferedTimestamp = Buffer.allocUnsafe(32);
-  // bufferedTimestamp.writeBigInt64BE(BigInt(0), 0);
-  // bufferedTimestamp.writeBigInt64BE(BigInt(0), 8);
-  // bufferedTimestamp.writeBigInt64BE(BigInt(0), 16);
-  // bufferedTimestamp.writeBigInt64BE(BigInt(timestamp), 24);
   const bufferedTimestamp = bufferU64BE(timestamp);
   const encodedData = encodeData(data);
 
@@ -109,6 +104,9 @@ describe("beacon-server", () => {
   const timestamp4 = 1649134000;
   const data4 = 125;
 
+  const name = bufferU64BE(123);
+  const nameHash = keccak256Packed(["bytes32"], [name]);
+
   before(async () => {
     // fund the accounts one shot
     await provider.connection.confirmTransaction(await provider.connection.requestAirdrop(airnode1.publicKey, anchor.web3.LAMPORTS_PER_SOL));
@@ -122,8 +120,7 @@ describe("beacon-server", () => {
     // 1. Airnode create the txn
     const beaconId = deriveBeaconId(airnode3.publicKey.toBytes(), templateID3);
     const beaconIdPDA = await deriveDatapointPDA(beaconId, program.programId);
-    // console.log("raw beaconId with length", beaconId.length, "and value", beaconId.toString("hex"), "pda", beaconIdPDA.toString(), program.programId);
-
+    
     const [airnodeSignature, airnodeTxn] = await newUpdateBeaconWithSignedDataTxn(
       beaconId,
       templateID3,
@@ -155,7 +152,6 @@ describe("beacon-server", () => {
     // Create the datapoint 4
     const beaconId4 = deriveBeaconId(airnode4.publicKey.toBytes(), templateID4);
     const beaconIdPDA4 = await deriveDatapointPDA(beaconId4, program.programId);
-    // console.log("raw beaconId with length", beaconId.length, "and value", beaconId.toString("hex"), "pda", beaconIdPDA.toString(), program.programId);
 
     const [airnodeSignature, airnodeTxn] = await newUpdateBeaconWithSignedDataTxn(
       beaconId4,
@@ -207,7 +203,7 @@ describe("beacon-server", () => {
       [messageRelayer],
     );
 
-    let wrappedDataPoint = await program.account.wrappedDataPoint.fetch(dapiPDA);
+    const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(dapiPDA);
     expect(wrappedDataPoint.rawDatapoint).to.deep.eq(createRawDatapointBuffer(124, 1649133999));
   });
 
@@ -282,6 +278,54 @@ describe("beacon-server", () => {
 
     const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(dapiPDA);
     const expected = createRawDatapointBuffer(data2, timestamp2);
+    expect(wrappedDataPoint.rawDatapoint).to.deep.eq(expected);
+  });
+
+  it("setName", async () => {
+    const beaconId = deriveBeaconId(airnode3.publicKey.toBytes(), templateID3);
+    const nameHashPDA = await deriveNameHashPDA(nameHash, program.programId);
+    await program.rpc.setName(
+      nameHash,
+      name,
+      beaconId,
+      {
+        accounts: {
+          hash: nameHashPDA,
+          user: provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        },
+      }
+    );
+    const wrappedDataPointId = await program.account.wrappedDataPointId.fetch(nameHashPDA);
+    for (let i = 0; i < beaconId.length; i++) {
+      expect(wrappedDataPointId.datapointId[i]).to.eq(beaconId[i]);
+    }
+  });
+
+  it("nameToDataPointId", async () => {
+    const beaconId = deriveBeaconId(airnode3.publicKey.toBytes(), templateID3);
+    const nameHashPDA = await deriveNameHashPDA(nameHash, program.programId);
+    const wrappedDataPointId = await program.account.wrappedDataPointId.fetch(nameHashPDA);
+    for (let i = 0; i < beaconId.length; i++) {
+      expect(wrappedDataPointId.datapointId[i]).to.eq(beaconId[i]);
+    }
+  });
+
+  it("readWithDataPointId", async () => {
+    const beaconId = deriveBeaconId(airnode3.publicKey.toBytes(), templateID3);
+    const beaconIdPDA = await deriveDatapointPDA(beaconId, program.programId);
+    const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(beaconIdPDA);
+    const expected = createRawDatapointBuffer(data3, timestamp3);
+    expect(wrappedDataPoint.rawDatapoint).to.deep.eq(expected);
+  });
+
+  it("readWithName", async () => {
+    const nameHashPDA = await deriveNameHashPDA(nameHash, program.programId);
+    const wrappedDataPointId = await program.account.wrappedDataPointId.fetch(nameHashPDA);
+    
+    const beaconIdPDA = await deriveDatapointPDA(wrappedDataPointId.datapointId, program.programId);
+    const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(beaconIdPDA);
+    const expected = createRawDatapointBuffer(data3, timestamp3);
     expect(wrappedDataPoint.rawDatapoint).to.deep.eq(expected);
   });
 });
