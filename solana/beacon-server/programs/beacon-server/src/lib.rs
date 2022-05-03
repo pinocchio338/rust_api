@@ -1,9 +1,10 @@
 mod access;
 mod utils;
+mod whitelist;
 
-use crate::utils::{DummySignatureManger, SolanaClock, SolanaHashMap};
+use crate::utils::{DatapointHashMap, DummySignatureManger, SolanaClock};
 use anchor_lang::{prelude::borsh::maybestd::collections::HashMap, prelude::*};
-use api3_common::{derive_beacon_id, ensure, process_beacon_update, Bytes32, DataPoint, Uint};
+use api3_common::{derive_beacon_id, ensure, process_beacon_update, DataPoint, Uint};
 
 declare_id!("FRoo7m8Sf6ZAirGgnn3KopQymDtujWx818kcnRxzi23b");
 
@@ -13,6 +14,10 @@ const ERROR_INVALID_SYSVAR_INSTRUCTIONS_KEY: u64 = 2u64;
 const ERROR_SIGNATURES_NOT_VALIDATED: u64 = 3u64;
 const ERROR_SIGNATURES_MORE_THAN_DATA: u64 = 4u64;
 const ERROR_NOT_ENOUGH_ACCOUNT: u64 = 5u64;
+const ERROR_INVALID_NAME_HASH: u64 = 6u64;
+const ERROR_DATA_LENGTH_NOT_MATCH: u64 = 7u64;
+const ERROR_INVALID_DERIVED_DAPI_ID_KEY: u64 = 8u64;
+const ERROR_INVALID_SYSTEM_PROGRAM_ID: u64 = 9u64;
 
 fn map_error(e: api3_common::Error) -> anchor_lang::error::Error {
     anchor_lang::error::Error::from(ProgramError::Custom(e.into()))
@@ -21,6 +26,8 @@ fn map_error(e: api3_common::Error) -> anchor_lang::error::Error {
 #[program]
 pub mod beacon_server {
     use super::*;
+    use crate::access::DummyAccessControl;
+    use crate::utils::NameHashHashMap;
 
     /// Update a new beacon data point with signed data. The beacon id is used as
     /// the seed to generate pda for the Beacon data account.
@@ -37,9 +44,10 @@ pub mod beacon_server {
             beacon_id == datapoint_key,
             Error::from(ProgramError::from(ERROR_INVALID_BEACON_ID_KEY))
         )?;
+        utils::check_sys_program(ctx.accounts.system_program.key)?;
 
         let timestamp = Uint::from(&timestamp);
-        let mut s = SolanaHashMap::new(
+        let mut s = DatapointHashMap::new(
             vec![(beacon_id, &mut ctx.accounts.datapoint)],
             HashMap::new(),
         );
@@ -59,6 +67,7 @@ pub mod beacon_server {
             !ctx.remaining_accounts.is_empty(),
             "must provide beacon accounts"
         );
+        utils::check_sys_program(ctx.accounts.system_program.key)?;
 
         let beacon_id_tuples = ctx
             .remaining_accounts
@@ -68,7 +77,8 @@ pub mod beacon_server {
             })
             .collect::<Result<Vec<(Pubkey, Account<WrappedDataPoint>)>>>()?;
 
-        utils::check_beacon_ids(&beacon_ids, &beacon_id_tuples)?;
+        let keys = beacon_id_tuples.iter().map(|a| a.0).collect::<Vec<_>>();
+        utils::check_beacon_ids(&beacon_ids, &keys, ctx.program_id)?;
         utils::check_dapi_id(&datapoint_key, &beacon_ids)?;
 
         // Step 2. Prepare the accounts
@@ -87,7 +97,7 @@ pub mod beacon_server {
             Error::from(ProgramError::from(ERROR_NOT_ENOUGH_ACCOUNT))
         )?;
 
-        let mut s = SolanaHashMap::new(write, read);
+        let mut s = DatapointHashMap::new(write, read);
         api3_common::update_dapi_with_beacons(&mut s, &beacon_ids).map_err(map_error)?;
         Ok(())
     }
@@ -112,17 +122,19 @@ pub mod beacon_server {
         let sig_count = ensure_batch_signed(instruction_acc, &data)?;
         let sig_checker = DummySignatureManger::new(sig_count);
 
+        utils::check_sys_program(ctx.accounts.system_program.key)?;
+
         // Step 2. Check the beacon id accounts are correct
         let mut idx = 0usize;
-        let beacon_id_tuples = account_iter
+        let keys = account_iter
             .clone()
-            .map(|item| -> (Pubkey, Bytes32) {
-                let r = (*item.key, template_ids[idx]);
+            .map(|item| -> Pubkey {
                 idx += 1;
-                r
+                *item.key
             })
-            .collect::<Vec<(Pubkey, Bytes32)>>();
-        utils::check_beacon_ids_with_templates(&beacon_ids, &beacon_id_tuples)?;
+            .collect::<Vec<Pubkey>>();
+
+        utils::check_beacon_ids(&beacon_ids, &keys, ctx.program_id)?;
         utils::check_dapi_id(&datapoint_key, &beacon_ids)?;
 
         // Step 3. Extract and prepare the data for beacon ids from storage
@@ -145,7 +157,7 @@ pub mod beacon_server {
         )?;
 
         // Step 4. Execute update_dapi_with_signed_data process
-        let mut s = SolanaHashMap::new(write, read);
+        let mut s = DatapointHashMap::new(write, read);
         let clock = SolanaClock::new(Clock::get().unwrap().unix_timestamp as u32);
 
         api3_common::update_dapi_with_signed_data(
@@ -168,61 +180,133 @@ pub mod beacon_server {
     /// that was pointing at a Beacon can be pointed to a dAPI, then another
     /// dAPI, etc.
     pub fn set_name(
-        _ctx: Context<DataPointIdAccount>,
-        datapoint_id_key: [u8; 32],
-        _name: [u8; 32],
-        _data_point_id: [u8; 32],
+        ctx: Context<DataPointIdAccount>,
+        name_hash: [u8; 32],
+        name: [u8; 32],
+        datapoint_id: [u8; 32],
     ) -> Result<()> {
-        msg!(
-            "delete this in actual implementation: {:?}",
-            datapoint_id_key
-        );
-        Ok(())
+        let access = DummyAccessControl::default();
+        let msg_sender = ctx.accounts.user.key.to_bytes();
+
+        utils::check_sys_program(ctx.accounts.system_program.key)?;
+        utils::check_name_hash(&name, &name_hash)?;
+
+        let mut storage = NameHashHashMap::new(vec![(name_hash, &mut ctx.accounts.hash)]);
+        api3_common::set_name(
+            name,
+            datapoint_id,
+            &msg_sender,
+            &access,
+            &mut storage
+        ).map_err(map_error)
     }
 
-    pub fn read_with_data_point_id(
-        _ctx: Context<DataPointAccount>,
-        datapoint_key: [u8; 32],
-    ) -> Result<()> {
-        msg!("delete this in actual implementation: {:?}", datapoint_key);
-        Ok(())
-    }
-
-    /// Reads the data point with name
-    /// The read data point may belong to a Beacon or dAPI. The reader
-    /// must be whitelisted for the hash of the data point name.
-    pub fn read_with_name(
-        _ctx: Context<DataPointAccount>,
-        datapoint_key: [u8; 32],
-        _name: [u8; 32],
-    ) -> Result<(u128, u32)> {
-        msg!("delete this in actual implementation: {:?}", datapoint_key);
-        Ok((0, 0))
-    }
-
-    /// Returns if a reader can read the data point
-    pub fn reader_can_read_data_point(
-        _ctx: Context<DataPointAccount>,
-        datapoint_key: [u8; 32],
-        _name: [u8; 32],
-        _reader: [u8; 32],
-    ) -> Result<bool> {
-        msg!("delete this in actual implementation: {:?}", datapoint_key);
-        Ok(false)
-    }
+    // pub fn read_with_data_point_id(
+    //     ctx: Context<DataPointAccount>,
+    //     datapoint_key: [u8; 32],
+    // ) -> Result<(Int, u32)> {
+    //     let whitelist = DummyWhitelist::default();
+    //     let access = DummyAccessControl::default();
+    //     let msg_sender = ctx.accounts.user.key.to_bytes();
+    //
+    //     let write = vec![(datapoint_key, &mut ctx.accounts.datapoint)];
+    //     let mut s = DatapointHashMap::new(write, HashMap::new());
+    //     let r = api3_common::read_with_data_point_id(
+    //         &datapoint_key,
+    //         &msg_sender,
+    //         &mut s,
+    //         &access,
+    //         &whitelist,
+    //     ).map_err(map_error)?;
+    //     Ok(r)
+    // }
+    //
+    // /// Reads the data point with name
+    // /// The read data point may belong to a Beacon or dAPI. The reader
+    // /// must be whitelisted for the hash of the data point name.
+    // pub fn read_with_name(
+    //     ctx: Context<DataWithDataPointIdAccount>,
+    //     datapoint_key: [u8; 32],
+    //     name: [u8; 32],
+    //     name_hash: [u8; 32],
+    // ) -> Result<(Int, u32)> {
+    //     ensure!(
+    //         keccak_packed(&[Token::FixedBytes(name.to_vec())]) == name_hash,
+    //         Error::from(ProgramError::from(ERROR_INVALID_NAME_HASH))
+    //     )?;
+    //     let whitelist = DummyWhitelist::default();
+    //     let access = DummyAccessControl::default();
+    //     let msg_sender = ctx.accounts.user.key.to_bytes();
+    //
+    //     let datapoint_s = DatapointHashMap::new(
+    //         vec![(datapoint_key, &mut ctx.accounts.datapoint)],
+    //         HashMap::new(),
+    //     );
+    //     let name_hash_s = NameHashHashMap::new(vec![(datapoint_key, &mut ctx.accounts.hash)]);
+    //
+    //     let r = api3_common::read_with_name(
+    //         name,
+    //         &msg_sender,
+    //         &datapoint_s,
+    //         &name_hash_s,
+    //         &access,
+    //         &whitelist,
+    //     ).map_err(map_error)?;
+    //     Ok(r)
+    // }
+    //
+    // /// Returns if a reader can read the data point
+    // pub fn reader_can_read_data_point(
+    //     ctx: Context<DataPointAccount>,
+    //     datapoint_key: [u8; 32],
+    // ) -> Result<bool> {
+    //     let msg_sender = ctx.accounts.user.key.to_bytes();
+    //     let whitelist = DummyWhitelist::default();
+    //     let access = DummyAccessControl::default();
+    //     Ok(api3_common::reader_can_read_data_point(
+    //         &datapoint_key,
+    //         &msg_sender,
+    //         &access,
+    //         &whitelist,
+    //     ))
+    // }
 }
 
 #[derive(Accounts)]
-#[instruction(datapoint_id_key: [u8; 32])]
+#[instruction(name_hash: [u8; 32])]
 pub struct DataPointIdAccount<'info> {
     #[account(
         init_if_needed,
         payer = user,
-        space = 8 + 32,
-        seeds = [b"hashed-name", datapoint_id_key.as_ref()],
+        space = 8 + 33,
+        seeds = [b"hashed-name", name_hash.as_ref()],
         bump
     )]
-    pub datapoint_id: Account<'info, WrappedDataPointId>,
+    pub hash: Account<'info, WrappedDataPointId>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(datapoint_key: [u8; 32], name_hash: [u8; 32])]
+pub struct DataWithDataPointIdAccount<'info> {
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = 8 + 33,
+        seeds = [b"hashed-name", name_hash.as_ref()],
+        bump
+    )]
+    pub hash: Account<'info, WrappedDataPointId>,
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = 8 + 41,
+        seeds = [b"datapoint", datapoint_key.as_ref()],
+        bump
+    )]
+    pub datapoint: Account<'info, WrappedDataPoint>,
     #[account(mut)]
     pub user: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -291,82 +375,3 @@ fn ensure_batch_signed(instruction_acc: &AccountInfo, data: &[Vec<u8>]) -> Resul
 
     Ok(sig_count)
 }
-
-// /// Create the beacon accounts. We only create up till `sig_count`, as only `sig_count` number
-// /// of signatures are provided
-// fn check_or_create_account<'a>(
-//     account_iter: &mut Iter<AccountInfo<'a>>,
-//     beacon_ids: &Vec<Bytes32>,
-//     payer_info: &AccountInfo<'a>,
-//     program_id: &Pubkey,
-//     system_info: &AccountInfo<'a>,
-//     sig_count: usize
-// ) -> Result<()> {
-//     let mut idx = 0;
-//     for a in account_iter {
-//         if a.data_is_empty() {
-//             create_and_serialize_account_signed(
-//                 payer_info,
-//                 &a,
-//                 &[DATAPOINT_SEED.as_bytes(), &beacon_ids[idx]],
-//                 program_id,
-//                 system_info,
-//                 &Rent::get()?,
-//                 DATAPOINT_ACCOUNT_SIZE,
-//             )?;
-//         }
-//         idx += 1;
-//         if idx >= sig_count {
-//             break;
-//         }
-//     }
-//     Ok(())
-// }
-//
-// pub fn create_and_serialize_account_signed<'a>(
-//     payer_info: &AccountInfo<'a>,
-//     account_info: &AccountInfo<'a>,
-//     account_address_seeds: &[&[u8]],
-//     program_id: &Pubkey,
-//     system_info: &AccountInfo<'a>,
-//     rent: &Rent,
-//     account_size: usize,
-// ) -> Result<()> {
-//     // Get PDA and assert it's the same as the requested account address
-//     let (account_address, bump_seed) =
-//         Pubkey::find_program_address(account_address_seeds, program_id);
-//
-//     if account_address != *account_info.key {
-//         msg!(
-//             "Create account with PDA: {:?} was requested while PDA: {:?} was expected",
-//             account_info.key,
-//             account_address
-//         );
-//         return Err(Error::from(ProgramError::from(ERROR_INVALID_ACCOUNT_SEED)));
-//     }
-//
-//     let create_account_instruction =
-//         anchor_lang::solana_program::system_instruction::create_account(
-//             payer_info.key,
-//             account_info.key,
-//             rent.minimum_balance(account_size),
-//             account_size as u64,
-//             program_id,
-//         );
-//
-//     let mut signers_seeds = account_address_seeds.to_vec();
-//     let bump = &[bump_seed];
-//     signers_seeds.push(bump);
-//
-//     anchor_lang::solana_program::program::invoke_signed(
-//         &create_account_instruction,
-//         &[
-//             payer_info.clone(),
-//             account_info.clone(),
-//             system_info.clone(),
-//         ],
-//         &[&signers_seeds[..]],
-//     )?;
-//
-//     Ok(())
-// }
