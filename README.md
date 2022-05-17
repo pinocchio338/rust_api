@@ -17,6 +17,7 @@ anchor build
 
 # make sure you are not in a browser setting with 
 export BROWSER=""
+solana-keygen new
 anchor test
 ```
 

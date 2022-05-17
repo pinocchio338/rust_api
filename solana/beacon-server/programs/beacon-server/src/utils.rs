@@ -1,8 +1,14 @@
-use crate::{ERROR_DATA_LENGTH_NOT_MATCH, ERROR_INVALID_BEACON_ID_KEY, ERROR_INVALID_DERIVED_DAPI_ID_KEY, ERROR_INVALID_NAME_HASH, ERROR_INVALID_SYSTEM_PROGRAM_ID, WrappedDataPoint, WrappedDataPointId};
+use crate::{
+    WrappedDataPoint, WrappedDataPointId, ERROR_DATA_LENGTH_NOT_MATCH, ERROR_INVALID_BEACON_ID_KEY,
+    ERROR_INVALID_DERIVED_DAPI_ID_KEY, ERROR_INVALID_NAME_HASH, ERROR_INVALID_SYSTEM_PROGRAM_ID,
+};
 use anchor_lang::accounts::account::Account;
 use anchor_lang::prelude::borsh::maybestd::collections::HashMap;
 use anchor_lang::prelude::*;
-use api3_common::{ensure, Bytes32, DataPoint, keccak_packed, SignatureManger, Storage, TimestampChecker, Token};
+use api3_common::abi::Token;
+use api3_common::{
+    ensure, keccak_packed, Bytes32, DataPoint, SignatureManger, Storage, TimestampChecker,
+};
 
 const DATAPOINT_SEED: &str = "datapoint";
 // const HASH_NAME_SEED: &str = "hashed-name";
@@ -93,25 +99,10 @@ impl TimestampChecker for SolanaClock {
 /// here is because solana has done this for us. The implementation should have asked solana
 /// to validate the signatures before hand. All this needs to do is just tracking the number
 /// of signatures
-pub(crate) struct DummySignatureManger {
-    sig_count: usize,
-}
-
-impl DummySignatureManger {
-    pub fn new(sig_count: usize) -> Self {
-        Self { sig_count }
-    }
-}
-
+pub(crate) struct DummySignatureManger;
 impl SignatureManger for DummySignatureManger {
-    /// For solana, we are assuming the signatures are arranged such as non-empty ones
-    /// are placed before the `sig_count` and empty ones are placed after.
-    fn is_empty(&self, index: usize) -> bool {
-        index >= self.sig_count
-    }
-
     /// Solana should have already verified the signature for us, return true by default
-    fn verify(&self, _key: &[u8], _message: &[u8], _signature: &[u8]) -> bool {
+    fn verify(_key: &[u8], _message: &[u8], _signature: &[u8]) -> bool {
         true
     }
 }
@@ -119,13 +110,16 @@ impl SignatureManger for DummySignatureManger {
 pub(crate) fn check_beacon_ids(
     beacon_ids: &[Bytes32],
     pdas: &[Pubkey],
-    program_id: &Pubkey
+    program_id: &Pubkey,
 ) -> Result<()> {
-    ensure!(beacon_ids.len() >= pdas.len(), Error::from(ProgramError::from(ERROR_DATA_LENGTH_NOT_MATCH)))?;
+    ensure!(
+        beacon_ids.len() >= pdas.len(),
+        Error::from(ProgramError::from(ERROR_DATA_LENGTH_NOT_MATCH))
+    )?;
     let diff = beacon_ids.len() - pdas.len();
     for i in 0..pdas.len() {
         ensure!(
-            derive_datapoint_pubkey(&beacon_ids[diff+i], program_id) == pdas[i],
+            derive_datapoint_pubkey(&beacon_ids[diff + i], program_id) == pdas[i],
             Error::from(ProgramError::from(ERROR_INVALID_BEACON_ID_KEY))
         )?;
     }
@@ -158,10 +152,8 @@ pub(crate) fn check_sys_program(program_id: &Pubkey) -> Result<()> {
 }
 
 fn derive_datapoint_pubkey(datapoint_key: &[u8], program_id: &Pubkey) -> Pubkey {
-    let (key, _) = Pubkey::find_program_address(
-        &[DATAPOINT_SEED.as_bytes(), datapoint_key],
-        program_id
-    );
+    let (key, _) =
+        Pubkey::find_program_address(&[DATAPOINT_SEED.as_bytes(), datapoint_key], program_id);
     key
 }
 

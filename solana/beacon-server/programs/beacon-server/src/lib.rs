@@ -1,9 +1,8 @@
-mod access;
 mod utils;
 
-use crate::utils::{DatapointHashMap, DummySignatureManger, SolanaClock};
+use crate::utils::{DatapointHashMap, DummySignatureManger, NameHashHashMap, SolanaClock};
 use anchor_lang::{prelude::borsh::maybestd::collections::HashMap, prelude::*};
-use api3_common::{derive_beacon_id, ensure, process_beacon_update, DataPoint, Uint};
+use api3_common::{abi::U256, derive_beacon_id, ensure, process_beacon_update, DataPoint};
 
 declare_id!("FRoo7m8Sf6ZAirGgnn3KopQymDtujWx818kcnRxzi23b");
 
@@ -25,8 +24,6 @@ fn map_error(e: api3_common::Error) -> anchor_lang::error::Error {
 #[program]
 pub mod beacon_server {
     use super::*;
-    use crate::access::DummyAccessControl;
-    use crate::utils::NameHashHashMap;
 
     /// Update a new beacon data point with signed data. The beacon id is used as
     /// the seed to generate pda for the Beacon data account.
@@ -45,7 +42,7 @@ pub mod beacon_server {
         )?;
         utils::check_sys_program(ctx.accounts.system_program.key)?;
 
-        let timestamp = Uint::from(&timestamp);
+        let timestamp = U256::from(&timestamp);
         let mut s = DatapointHashMap::new(
             vec![(beacon_id, &mut ctx.accounts.datapoint)],
             HashMap::new(),
@@ -119,7 +116,6 @@ pub mod beacon_server {
             .next()
             .ok_or_else(|| Error::from(ProgramError::from(ERROR_NOT_ENOUGH_ACCOUNT)))?;
         let sig_count = ensure_batch_signed(instruction_acc, &data)?;
-        let sig_checker = DummySignatureManger::new(sig_count);
 
         utils::check_sys_program(ctx.accounts.system_program.key)?;
 
@@ -159,15 +155,16 @@ pub mod beacon_server {
         let mut s = DatapointHashMap::new(write, read);
         let clock = SolanaClock::new(Clock::get().unwrap().unix_timestamp as u32);
 
-        api3_common::update_dapi_with_signed_data(
+        let mut sig = (0..sig_count).into_iter().map(|_| vec![0]).collect::<Vec<_>>();
+        (sig_count..idx).into_iter().for_each(|_| sig.push(vec![]));
+        api3_common::update_dapi_with_signed_data::<_, DummySignatureManger, _>(
             &mut s,
-            &sig_checker,
             &clock,
             airnodes,
             template_ids,
             timestamps,
             data,
-            (0..idx).into_iter().map(|_| vec![]).collect(),
+            sig,
         )
         .map_err(map_error)?;
         Ok(())
@@ -184,20 +181,15 @@ pub mod beacon_server {
         name: [u8; 32],
         datapoint_id: [u8; 32],
     ) -> Result<()> {
-        let access = api3_common::DummyAccessControl::default();
+        let access = api3_common::dummy::DummyAccess::default();
         let msg_sender = ctx.accounts.user.key.to_bytes();
 
         utils::check_sys_program(ctx.accounts.system_program.key)?;
         utils::check_name_hash(&name, &name_hash)?;
 
         let mut storage = NameHashHashMap::new(vec![(name_hash, &mut ctx.accounts.hash)]);
-        api3_common::set_name(
-            name,
-            datapoint_id,
-            &msg_sender,
-            &access,
-            &mut storage
-        ).map_err(map_error)
+        api3_common::set_name(name, datapoint_id, &msg_sender, &access, &mut storage)
+            .map_err(map_error)
     }
 }
 
