@@ -1,5 +1,5 @@
 use super::sort;
-use crate::U256;
+use crate::abi::U256;
 
 /// get the median from an array of U256
 pub fn median(array: &[U256]) -> U256 {
@@ -14,7 +14,7 @@ pub fn median(array: &[U256]) -> U256 {
 }
 
 /// TODO: find a way to unify this with the non-wrapped one
-pub fn median_wrapped_u256(array: &[crate::types::U256]) -> crate::types::U256 {
+pub fn median_wrapped_u256(array: &[U256]) -> U256 {
     let len = array.len();
     let array = sort(array);
     let mid: usize = len / 2;

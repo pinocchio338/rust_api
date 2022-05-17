@@ -1,5 +1,5 @@
 [package]
-name = "api3-contract"
+name = "dapi-server"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,9 +9,9 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 near-sdk = "3.1.0"
 serde = { version = "1"}
-api3-common = { path = "../../common" }
-
-
+api3-common = { path = "../../common", features = ["dummy"] }
+ed25519-dalek = { version = "1.0.1", default-features = false, features = ["std"] }
+hex = "0.4.3"
 
 [dev-dependencies]
 near-sdk-sim = "3.1.0"

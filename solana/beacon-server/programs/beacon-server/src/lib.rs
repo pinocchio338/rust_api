@@ -1,6 +1,5 @@
 mod access;
 mod utils;
-mod whitelist;
 
 use crate::utils::{DatapointHashMap, DummySignatureManger, SolanaClock};
 use anchor_lang::{prelude::borsh::maybestd::collections::HashMap, prelude::*};
@@ -185,7 +184,7 @@ pub mod beacon_server {
         name: [u8; 32],
         datapoint_id: [u8; 32],
     ) -> Result<()> {
-        let access = DummyAccessControl::default();
+        let access = api3_common::DummyAccessControl::default();
         let msg_sender = ctx.accounts.user.key.to_bytes();
 
         utils::check_sys_program(ctx.accounts.system_program.key)?;
@@ -200,76 +199,6 @@ pub mod beacon_server {
             &mut storage
         ).map_err(map_error)
     }
-
-    // pub fn read_with_data_point_id(
-    //     ctx: Context<DataPointAccount>,
-    //     datapoint_key: [u8; 32],
-    // ) -> Result<(Int, u32)> {
-    //     let whitelist = DummyWhitelist::default();
-    //     let access = DummyAccessControl::default();
-    //     let msg_sender = ctx.accounts.user.key.to_bytes();
-    //
-    //     let write = vec![(datapoint_key, &mut ctx.accounts.datapoint)];
-    //     let mut s = DatapointHashMap::new(write, HashMap::new());
-    //     let r = api3_common::read_with_data_point_id(
-    //         &datapoint_key,
-    //         &msg_sender,
-    //         &mut s,
-    //         &access,
-    //         &whitelist,
-    //     ).map_err(map_error)?;
-    //     Ok(r)
-    // }
-    //
-    // /// Reads the data point with name
-    // /// The read data point may belong to a Beacon or dAPI. The reader
-    // /// must be whitelisted for the hash of the data point name.
-    // pub fn read_with_name(
-    //     ctx: Context<DataWithDataPointIdAccount>,
-    //     datapoint_key: [u8; 32],
-    //     name: [u8; 32],
-    //     name_hash: [u8; 32],
-    // ) -> Result<(Int, u32)> {
-    //     ensure!(
-    //         keccak_packed(&[Token::FixedBytes(name.to_vec())]) == name_hash,
-    //         Error::from(ProgramError::from(ERROR_INVALID_NAME_HASH))
-    //     )?;
-    //     let whitelist = DummyWhitelist::default();
-    //     let access = DummyAccessControl::default();
-    //     let msg_sender = ctx.accounts.user.key.to_bytes();
-    //
-    //     let datapoint_s = DatapointHashMap::new(
-    //         vec![(datapoint_key, &mut ctx.accounts.datapoint)],
-    //         HashMap::new(),
-    //     );
-    //     let name_hash_s = NameHashHashMap::new(vec![(datapoint_key, &mut ctx.accounts.hash)]);
-    //
-    //     let r = api3_common::read_with_name(
-    //         name,
-    //         &msg_sender,
-    //         &datapoint_s,
-    //         &name_hash_s,
-    //         &access,
-    //         &whitelist,
-    //     ).map_err(map_error)?;
-    //     Ok(r)
-    // }
-    //
-    // /// Returns if a reader can read the data point
-    // pub fn reader_can_read_data_point(
-    //     ctx: Context<DataPointAccount>,
-    //     datapoint_key: [u8; 32],
-    // ) -> Result<bool> {
-    //     let msg_sender = ctx.accounts.user.key.to_bytes();
-    //     let whitelist = DummyWhitelist::default();
-    //     let access = DummyAccessControl::default();
-    //     Ok(api3_common::reader_can_read_data_point(
-    //         &datapoint_key,
-    //         &msg_sender,
-    //         &access,
-    //         &whitelist,
-    //     ))
-    // }
 }
 
 #[derive(Accounts)]

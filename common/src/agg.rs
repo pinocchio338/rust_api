@@ -1,4 +1,5 @@
-use crate::{DataPoint, Int};
+use crate::abi::Int;
+use crate::DataPoint;
 use std::ops::Div;
 
 /// The Manager for handling multiple datapoints

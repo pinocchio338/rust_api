@@ -18,10 +18,6 @@ pub enum Error {
     FulfillmentOlderThanBeacon,
     #[error("Invalid name: {0}")]
     InvalidName(String),
-    #[error("Eth Abi Error: {0}")]
-    EthAbiError(ethabi::Error),
-    #[cfg(feature = "recovery")]
-    Libsecp256k1Error(libsecp256k1::Error),
     #[error("Parameter length mismatch")]
     ParameterLengthMismatch,
     #[error("Specified less than two Beacons")]
@@ -48,13 +44,12 @@ pub enum Error {
     InvalidAddress,
     #[error("Only Renounce roles for self")]
     OnlyRenounceRolesForSelf,
-}
-
-#[cfg(feature = "recovery")]
-impl From<libsecp256k1::Error> for Error {
-    fn from(e: libsecp256k1::Error) -> Self {
-        Error::Libsecp256k1Error(e)
-    }
+    #[error("Not authorized to perform this action")]
+    NotAuthorized,
+    #[error("Role admin not found")]
+    RoleAdminNotFound,
+    #[error("Contract already initialized")]
+    AlreadyInitialized,
 }
 
 impl From<Error> for u32 {
@@ -67,9 +62,6 @@ impl From<Error> for u32 {
             Error::BeaconDataNotFound => 4,
             Error::FulfillmentOlderThanBeacon => 5,
             Error::InvalidName(_) => 6,
-            Error::EthAbiError(_) => 7,
-            #[cfg(feature = "recovery")]
-            Error::Libsecp256k1Error(_) => 8,
             Error::ParameterLengthMismatch => 9,
             Error::LessThanTwoBeacons => 10,
             Error::InvalidTimestamp => 11,
@@ -83,6 +75,9 @@ impl From<Error> for u32 {
             Error::UserAddressZero => 19,
             Error::InvalidAddress => 20,
             Error::OnlyRenounceRolesForSelf => 21,
+            Error::NotAuthorized => 22,
+            Error::RoleAdminNotFound => 23,
+            Error::AlreadyInitialized => 24,
         }
     }
 }
