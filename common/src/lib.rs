@@ -1,22 +1,21 @@
-mod abi;
+pub mod abi;
 mod access;
-mod access_control_registry;
 mod agg;
 mod beacon;
 mod datapoint;
+#[cfg(feature = "dummy")]
+pub mod dummy;
 mod error;
-pub mod types;
 pub mod util;
 mod whitelist;
 
-pub use abi::*;
 pub use access::*;
 pub use agg::Aggregator;
 pub use beacon::*;
 pub use datapoint::DataPoint;
 pub use error::Error;
 pub use util::*;
-pub use whitelist::Whitelist;
+pub use whitelist::*;
 
 pub type Bytes = Vec<u8>;
 pub type Bytes32 = [u8; 32];

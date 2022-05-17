@@ -1,23 +1,32 @@
-use crate::{ensure, keccak_packed, Bytes32, Error, Token, Zero};
+use crate::abi::Token;
+use crate::{ensure, keccak_packed, Bytes32, Error, Zero};
 
 /// Roles that are known at dev time.
 pub enum StaticRole {
     UnlimitedReaderRole,
     NameSetterRole,
 }
-/// The access control registry interface in the solidity contract
-pub trait AccessControlRegistry {
-    /// The address type for the chain
-    type Address: AsRef<[u8]> + Zero;
-    /// Default admin role, align with Openzepplin's definition
-    const DEFAULT_ADMIN_ROLE: Bytes32 = [0; 32];
-    const NAME_SETTER_ROLE_DESCRIPTION: &'static str = "Name setter";
-    const UNLIMITED_READER_ROLE_DESCRIPTION: &'static str = "Unlimited reader";
+
+pub trait AccessControlRegistryAdminnedWithManager {
+    type Address: AsRef<[u8]> + Zero + PartialEq;
 
     /// Get the manager of this registry
     fn manager(&self) -> &Self::Address;
     /// Admin role description
     fn admin_role_description(&self) -> String;
+    /// Admin role description hash
+    fn admin_role_description_hash(&self) -> Bytes32;
+    /// Admin role
+    fn admin_role(&self) -> Bytes32;
+}
+
+/// The access control registry interface in the solidity contract
+pub trait AccessControlRegistry: AccessControlRegistryAdminnedWithManager {
+    /// Default admin role, align with Openzepplin's definition
+    const DEFAULT_ADMIN_ROLE: Bytes32 = [0; 32];
+    const NAME_SETTER_ROLE_DESCRIPTION: &'static str = "Name setter";
+    const UNLIMITED_READER_ROLE_DESCRIPTION: &'static str = "Unlimited reader";
+
     /// Find the role by its name. Not in the original solidity contract
     /// Just for making it work in Rust
     fn find_static_role(&self, role: StaticRole) -> Bytes32 {
@@ -32,6 +41,19 @@ pub trait AccessControlRegistry {
             ),
         }
     }
+    /// Checks that an account has a specific role. Reverts
+    /// with a standardized message including the required role.
+    /// `role` The role to check
+    /// `msg_sender` The address to check
+    fn only_role(&self, role: &Bytes32, msg_sender: &Self::Address) -> Result<(), Error> {
+        ensure!(
+            self.has_role(
+                &self.get_role_admin(role).ok_or(Error::RoleAdminNotFound)?,
+                msg_sender
+            ),
+            Error::NotAuthorized
+        )
+    }
     /// Checks if user has a particular role
     /// `role` The role to check
     /// `who` The address to check
@@ -39,26 +61,20 @@ pub trait AccessControlRegistry {
     /// Grant role for the user
     /// `role` The role to grant
     /// `who` The address to grant role
-    fn grant_role(&mut self, role: &Bytes32, who: &Self::Address);
+    fn grant_role(&mut self, role: &Bytes32, who: &Self::Address) -> Result<(), Error>;
     /// Get the admin role of role
     /// `role` The role to check
     fn get_role_admin(&self, role: &Bytes32) -> Option<Bytes32>;
     /// Set the role admin for a role
     /// `role` The role to grant
     /// `role_admin` The role admin
-    fn set_role_admin(&mut self, role: &Bytes32, role_admin: Bytes32);
+    fn set_role_admin(&mut self, role: &Bytes32, role_admin: Bytes32) -> Result<(), Error>;
     /// Called by the account to renounce the role
     /// Override to disallow managers to renounce their root roles.
     /// `role` and `account` are not validated because
     /// `role` Role to be renounced
     /// `account` Account to renounce the role
-    /// `msg_sender` The message sender
-    fn renounce_role(
-        &mut self,
-        role: &Bytes32,
-        account: &Self::Address,
-        msg_sender: &Self::Address,
-    ) -> Result<(), Error>;
+    fn renounce_role(&mut self, role: &Bytes32, account: &Self::Address) -> Result<(), Error>;
     /// Initializes the manager by initializing its root role and
     /// granting it to them
     /// Anyone can initialize a manager. An uninitialized manager
@@ -70,7 +86,7 @@ pub trait AccessControlRegistry {
         ensure!(!manager.is_zero(), Error::InvalidAddress)?;
         let root_role = RoleDeriver::derive_root_role(manager.as_ref());
         if !self.has_role(&root_role, manager) {
-            self.grant_role(&root_role, manager);
+            self.grant_role(&root_role, manager)?;
         }
         Ok(())
     }
@@ -106,9 +122,9 @@ pub trait AccessControlRegistry {
             if admin_role == self.derive_root_role(msg_sender) {
                 self.initialize_manager(msg_sender)?;
             }
-            self.set_role_admin(&role, admin_role);
+            self.set_role_admin(&role, admin_role)?;
         }
-        self.grant_role(&role, msg_sender);
+        self.grant_role(&role, msg_sender)?;
         Ok(role)
     }
     /// Derives the admin role of the manager
@@ -140,7 +156,7 @@ pub trait AccessControlRegistry {
 /// If a contract interfaces with AccessControlRegistry and needs to
 /// derive roles, it should inherit this contract instead of re-implementing
 /// the logic
-struct RoleDeriver {}
+pub struct RoleDeriver;
 
 impl RoleDeriver {
     /// Derives the root role of the manager

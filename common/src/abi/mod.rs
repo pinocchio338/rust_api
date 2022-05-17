@@ -1,8 +1,13 @@
-mod adaptor;
+mod decode;
+mod encode;
+mod types;
 
-use crate::{Bytes, Bytes32};
-pub use adaptor::{decode, encode, Address, FixedBytes, Int, ParamType, Token, Uint, U256};
 use tiny_keccak::{Hasher, Keccak};
+
+pub use crate::abi::decode::*;
+pub use crate::abi::encode::*;
+pub use crate::abi::types::{Address, FixedBytes, Int, ParamType, Token, Uint, Word, U256};
+use crate::{Bytes, Bytes32};
 
 /// Rust implementation of solidity abi.encodePacked(...)
 pub fn encode_packed(items: &[Token]) -> (Bytes, String) {
@@ -21,14 +26,18 @@ fn pack(t: &Token) -> Vec<u8> {
     let mut res = Vec::new();
     match t {
         Token::String(s) => res.extend(s.as_bytes()),
-        Token::Address(a) => res.extend(a.as_bytes()),
+        Token::Address(a) => res.extend(a),
         Token::Uint(n) => {
             let mut v = vec![0u8; 32];
             n.to_big_endian(&mut v);
             res.extend(v);
         }
+        Token::Int(n) => {
+            let mut v = vec![0u8; 32];
+            n.to_big_endian(&mut v);
+            res.extend(v);
+        }
         Token::Bytes(b) | Token::FixedBytes(b) => res.extend(b),
-        _ => {}
     };
     res
 }
@@ -50,30 +59,10 @@ pub fn to_eth_signed_message_hash(s: &[u8]) -> Bytes32 {
     keccak256(&bytes)
 }
 
-#[cfg(feature = "recovery")]
-fn public_key_to_address(p: libsecp256k1::PublicKey) -> Address {
-    let hash = keccak256(&p.serialize()[1..]);
-    Address::from_slice(&hash[12..])
-}
-
-#[cfg(feature = "recovery")]
-pub fn recover(message: &Bytes32, signature: &[u8; 65]) -> Result<Address, crate::Error> {
-    let m = libsecp256k1::Message::parse(message);
-
-    let mut s = [0u8; 64];
-    s.copy_from_slice(&signature[..64]);
-
-    let sig = libsecp256k1::Signature::parse_standard(&s)?;
-    let i = libsecp256k1::RecoveryId::parse(signature[64] - 27)?;
-    let p = libsecp256k1::recover(&m, &sig, &i)?;
-    Ok(public_key_to_address(p))
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::abi::{encode_packed, keccak256, Token};
+    use crate::abi::{encode_packed, keccak256, to_eth_signed_message_hash, Token};
     use crate::abi::{Address, Uint};
-    use crate::to_eth_signed_message_hash;
     use hex_literal::hex;
 
     #[test]
@@ -161,23 +150,5 @@ mod tests {
             b,
             hex!("ff0d3be602bd7ed7c0454766464e6a1a9130a63cd505e629ae133db5c3b9f149")
         );
-    }
-
-    #[test]
-    #[cfg(feature = "recovery")]
-    fn verify_works() {
-        let mut bytes = vec![0; 36];
-        bytes[0] = 18;
-        bytes[1] = 120;
-
-        let message = to_eth_signed_message_hash(&bytes);
-        let signature = hex::decode("c01673d51c5e9276a380959a147a29b56e9ab47ef9fd0183c1f1155b8a1ac094571be063ea415c293bd986f31eb31faa790858bf48260157b2978b6edadd07a91b").unwrap();
-
-        let mut s = [0u8; 65];
-        s.copy_from_slice(&signature);
-
-        let pubkey = crate::recover(&message, &s).unwrap();
-        let address = hex::decode("65B0c8b91707B68C0B23388001B9dC7aab3f6A81").unwrap();
-        assert_eq!(pubkey.as_bytes().to_vec(), address);
     }
 }

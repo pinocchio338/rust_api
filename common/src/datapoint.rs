@@ -1,4 +1,5 @@
-use crate::{error, Int};
+use crate::abi::Int;
+use crate::error;
 
 /// The data point struct in the original API3 beacon server contract
 #[derive(Clone, Default)]

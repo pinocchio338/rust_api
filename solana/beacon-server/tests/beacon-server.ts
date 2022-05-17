@@ -302,7 +302,7 @@ describe("beacon-server", () => {
     }
   });
 
-  it("nameToDataPointId", async () => {
+  it("name_to_data_point_id", async () => {
     const beaconId = deriveBeaconId(airnode3.publicKey.toBytes(), templateID3);
     const nameHashPDA = await deriveNameHashPDA(nameHash, program.programId);
     const wrappedDataPointId = await program.account.wrappedDataPointId.fetch(nameHashPDA);

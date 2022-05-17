@@ -1,9 +1,10 @@
+use crate::abi::{decode, encode, encode_packed, keccak256, Int, ParamType, Token, Uint, U256};
 use crate::access::AccessControlRegistry;
 use crate::whitelist::Whitelist;
-use crate::*;
+use crate::{ensure, keccak_packed, median, Bytes, Bytes32, DataPoint, Error, StaticRole, Zero};
 
-const ONE_HOUR_IN_MS: u32 = 3600000;
-const FIFTEEN_MINUTES_IN_MS: u32 = 900000;
+const ONE_HOUR_IN_SECONDS: u32 = 3600;
+const FIFTEEN_MINUTES_IN_SECONDS: u32 = 900;
 
 /// Generic storage trait. Used for the common processing logic so that each chain could
 /// have their own implementation.
@@ -14,14 +15,11 @@ pub trait Storage<T> {
 
 /// Public trait that handles signature verification across different chains
 pub trait SignatureManger {
-    /// Checks if the signature passed from client is actually empty
-    /// * `index` - The index of the signature to check if it is empty
-    fn is_empty(&self, index: usize) -> bool;
     /// Verifies the signature against the message and public key
     /// * `key` - The public key of the signer
     /// * `message` - The message to verify
     /// * `signature` - The signature to verify
-    fn verify(&self, key: &[u8], message: &[u8], signature: &[u8]) -> bool;
+    fn verify(key: &[u8], message: &[u8], signature: &[u8]) -> bool;
 }
 
 /// Public trait that handles timestamp fetching across different chains
@@ -30,10 +28,10 @@ pub trait TimestampChecker {
     fn is_valid(&self, timestamp: u32) -> bool {
         let c = self.current_timestamp();
         timestamp
-            .checked_add(ONE_HOUR_IN_MS)
+            .checked_add(ONE_HOUR_IN_SECONDS)
             .expect("Invalid timestamp")
             > c
-            && timestamp < c + FIFTEEN_MINUTES_IN_MS
+            && timestamp < c + FIFTEEN_MINUTES_IN_SECONDS
     }
 }
 
@@ -66,8 +64,6 @@ pub fn set_name<D: Storage<Bytes32>, A: AccessControlRegistry>(
 
 /// Reads the data point with ID
 /// `data_point_id` Data point ID
-/// `value` Data point value
-/// `timestamp` Data point timestamp
 pub fn read_with_data_point_id<
     D: Storage<DataPoint>,
     A: AccessControlRegistry,
@@ -134,7 +130,7 @@ pub fn reader_can_read_data_point<A: AccessControlRegistry, W: Whitelist<Address
 pub fn update_dapi_with_beacons<D: Storage<DataPoint>>(
     d: &mut D,
     beacon_ids: &[Bytes32],
-) -> Result<(), Error> {
+) -> Result<Bytes32, Error> {
     let beacon_count = beacon_ids.len();
     ensure!(beacon_count > 1, Error::LessThanTwoBeacons)?;
 
@@ -159,7 +155,7 @@ pub fn update_dapi_with_beacons<D: Storage<DataPoint>>(
     let datapoint = DataPoint::new(updated_value, updated_timestamp);
 
     d.store(dapi_id, datapoint);
-    Ok(())
+    Ok(dapi_id)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -169,14 +165,13 @@ pub fn update_dapi_with_signed_data<
     T: TimestampChecker,
 >(
     d: &mut D,
-    s: &S,
     t: &T,
     airnodes: Vec<Bytes>,
     template_ids: Vec<[u8; 32]>,
     timestamps: Vec<[u8; 32]>,
     data: Vec<Bytes>,
     signatures: Vec<Bytes>,
-) -> Result<(), Error> {
+) -> Result<Bytes32, Error> {
     let beacon_count = template_ids.len();
 
     ensure!(
@@ -194,19 +189,18 @@ pub fn update_dapi_with_signed_data<
     let mut accumulated_timestamp = U256::from(0);
 
     for ind in 0..beacon_count {
-        if !s.is_empty(ind) {
-            let timestamp = U256::from(&timestamps[ind]);
+        if !signatures[ind].is_empty() {
+            let timestamp = U256::from_big_endian(&timestamps[ind]);
             let timestamp_u32 = timestamp.as_u32();
             ensure!(t.is_valid(timestamp_u32), Error::InvalidTimestamp)?;
 
-            let (encoded, _) = encode_packed(&[
+            let message = keccak_packed(&[
                 Token::FixedBytes(template_ids[ind].clone().to_vec()),
                 Token::Uint(timestamp),
                 Token::Bytes(data[ind].clone()),
             ]);
-            let message = to_eth_signed_message_hash(&keccak256(&encoded));
             ensure!(
-                s.verify(&airnodes[ind], &message, &signatures[ind]),
+                S::verify(&airnodes[ind], &message, &signatures[ind]),
                 Error::InvalidSignature
             )?;
 
@@ -237,7 +231,7 @@ pub fn update_dapi_with_signed_data<
     let updated_value = median(&values);
     let datapoint = DataPoint::new(updated_value, updated_timestamp);
     d.store(dapi_id, datapoint);
-    Ok(())
+    Ok(dapi_id)
 }
 
 pub fn derive_beacon_id(airnode: Bytes, template_id: Bytes32) -> Bytes32 {

@@ -13,7 +13,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::U256;
+    use crate::abi::U256;
 
     #[test]
     fn already_sorted() {
