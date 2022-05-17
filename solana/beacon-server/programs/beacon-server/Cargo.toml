@@ -17,5 +17,5 @@ default = []
 
 [dependencies]
 anchor-lang = { version = "0.23.0", features = ["init-if-needed"] }
-api3-common = { path = "../../../../common" }
+api3-common = { path = "../../../../common", features = ["dummy"] }
 hex = "0.4.3"

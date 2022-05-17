@@ -89,19 +89,19 @@ describe("beacon-server", () => {
 
   // define all the data
   const templateId1 = 1;
-  const timestamp1 = 1649133996;    
+  const timestamp1 = Math.floor(Date.now() / 1000);    
   const data1 = 121;
 
   const templateId2 = 1;
-  const timestamp2 = 1649133997;    
+  const timestamp2 = Math.floor(Date.now() / 1000);    
   const data2 = 122;
 
   const templateID3 = 1;
-  const timestamp3 = 1649133998;
+  const timestamp3 = Math.floor(Date.now() / 1000);
   const data3 = 123;
 
   const templateID4 = 1;
-  const timestamp4 = 1649134000;
+  const timestamp4 = Math.floor(Date.now() / 1000);
   const data4 = 125;
 
   const name = bufferU64BE(123);
@@ -171,7 +171,7 @@ describe("beacon-server", () => {
 
     const wrappedDataPoint4 = await program.account.wrappedDataPoint.fetch(beaconIdPDA4);
     const expected = createRawDatapointBuffer(data4, timestamp4);
-    expect(wrappedDataPoint4.rawDatapoint).to.deep.eq(expected);
+    expect([...wrappedDataPoint4.rawDatapoint]).to.deep.eq([...expected]);
 
     // now test updateDapiWithBeacons
     const beaconId3 = deriveBeaconId(airnode3.publicKey.toBytes(), templateID3);
@@ -204,7 +204,11 @@ describe("beacon-server", () => {
     );
 
     const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(dapiPDA);
-    expect(wrappedDataPoint.rawDatapoint).to.deep.eq(createRawDatapointBuffer(124, 1649133999));
+    expect(
+      wrappedDataPoint.rawDatapoint
+    ).to.deep.eq(
+      createRawDatapointBuffer((data3 + data4) / 2, (timestamp3 + timestamp4) / 2)
+    );
   });
 
   it("updateDapiWithSignedData", async () => {
@@ -225,7 +229,9 @@ describe("beacon-server", () => {
     const beaconId2 = deriveBeaconId(airnode2.publicKey.toBytes(), templateId2);
     const beaconId3 = deriveBeaconId(airnode3.publicKey.toBytes(), templateId3);
     const beaconIds = [beaconId1, beaconId2, beaconId3];
-    // console.log("beaconId3", [beaconId1, beaconId2, beaconId3].map(b => b.toString("hex")));
+    // console.log("beaconIds", [[...beaconId1], [...beaconId2], [...beaconId3]]);
+    // console.log("airnodes", [airnode1, airnode2, airnode3].map(t => [...t.publicKey.toBytes()]));
+    // console.log("templates", [templateId1, templateId2, templateId3]);
 
     const dataPointId = deriveDApiId(beaconIds);
 
