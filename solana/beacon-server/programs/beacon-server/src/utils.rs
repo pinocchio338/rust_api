@@ -11,7 +11,6 @@ use api3_common::{
 };
 
 const DATAPOINT_SEED: &str = "datapoint";
-// const HASH_NAME_SEED: &str = "hashed-name";
 
 pub type NameHashAccountRef<'info> = Account<'info, WrappedDataPointId>;
 pub(crate) struct NameHashHashMap<'info, 'account> {
@@ -156,11 +155,3 @@ fn derive_datapoint_pubkey(datapoint_key: &[u8], program_id: &Pubkey) -> Pubkey 
         Pubkey::find_program_address(&[DATAPOINT_SEED.as_bytes(), datapoint_key], program_id);
     key
 }
-
-// fn derive_hashname_pubkey(datapoint_key: &[u8], program_id: &Pubkey) -> Pubkey {
-//     let (key, _) = Pubkey::find_program_address(
-//         &[HASH_NAME_SEED.as_bytes(), datapoint_key],
-//         program_id
-//     );
-//     key
-// }

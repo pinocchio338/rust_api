@@ -7,21 +7,12 @@ use crate::utils::{
     msg_sender, Bytes32HashMap, DatapointHashMap, NearAccessControlRegistry, NearClock, SignatureVerify,
 };
 use api3_common::abi::{ Token, Uint };
-use api3_common::{
-    derive_beacon_id, keccak_packed, process_beacon_update, AccessControlRegistry, Bytes, Bytes32,
-    Error, SignatureManger,
-};
+use api3_common::{derive_beacon_id, keccak_packed, process_beacon_update, AccessControlRegistry, Bytes, Bytes32, Error, SignatureManger, StaticRole};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{collections::LookupMap, near_bindgen};
 use crate::whitelist::{WhitelistStatus};
 
 near_sdk::setup_alloc!();
-
-/// @notice Unlimited reader role description
-const UNLIMITED_READER_ROLE_DESCRIPTION: &str = "Unlimited reader";
-
-/// @notice Name setter role description
-const NAME_SETTER_ROLE_DESCRIPTION: &str = "Name setter";
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
@@ -32,8 +23,6 @@ pub struct DapiServer {
     name_hash_to_data_point_id: LookupMap<Bytes32, Bytes32>,
 
     /// Access control related storage
-    unlimited_reader_role: Bytes32,
-    name_setter_role: Bytes32,
     manager: Address,
     admin_role_description: String,
     role_membership: LookupMap<Bytes32, bool>,
@@ -57,8 +46,6 @@ impl Default for DapiServer {
             initialized: false,
             data_points,
             name_hash_to_data_point_id,
-            unlimited_reader_role: Bytes32::default(),
-            name_setter_role: Bytes32::default(),
             manager: Address(Bytes32::default()),
             admin_role_description: String::from("admin role"),
             role_membership,
@@ -89,24 +76,46 @@ impl DapiServer {
             )
             .unwrap();
 
-        self.unlimited_reader_role = access.derive_role(
-            access.derive_admin_role(&manager),
-            hex::encode(keccak_packed(&[Token::String(
-                UNLIMITED_READER_ROLE_DESCRIPTION.parse().unwrap(),
-            )])),
-        );
-        self.name_setter_role = access.derive_role(
-            access.derive_admin_role(&manager),
-            hex::encode(keccak_packed(&[Token::String(
-                NAME_SETTER_ROLE_DESCRIPTION.parse().unwrap(),
-            )])),
-        );
-
         self.manager = manager;
         self.initialized = true;
     }
 
     // ================== Access Control ====================
+    pub fn roles(&self) -> (Bytes32, Bytes32) {
+        let access = NearAccessControlRegistry::read_only(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &self.role_membership,
+            &self.role_admin,
+        );
+        (
+            access.find_static_role(StaticRole::UnlimitedReaderRole),
+            access.find_static_role(StaticRole::NameSetterRole)
+        )
+    }
+
+    /// Revoke `role` to `who`
+    pub fn renounce_role(&mut self, role: Bytes32, who: Bytes32) {
+        let mut access = NearAccessControlRegistry::requires_write(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &mut self.role_membership,
+            &mut self.role_admin,
+        );
+
+        ensure!(
+            access
+                .only_role(
+                    &NearAccessControlRegistry::DEFAULT_ADMIN_ROLE,
+                    &msg_sender()
+                )
+                .is_ok(),
+            Error::NotAuthorized
+        );
+
+        access.renounce_role(&role, &Address(who)).unwrap();
+    }
+
     /// Grants `role` to `who`
     pub fn grant_role(&mut self, role: Bytes32, who: Bytes32) {
         let mut access = NearAccessControlRegistry::requires_write(
@@ -248,22 +257,25 @@ impl DapiServer {
     /// `data_point_id` Data point ID
     pub fn read_with_data_point_id(&self, data_point_id: Bytes32) -> (Bytes32, u32) {
         let storage = DatapointHashMap::read_only(&self.data_points);
-        // let access = NearAccessControlRegistry::read_only(
-        //     self.manager.clone(),
-        //     self.admin_role_description.clone(),
-        //     &self.role_membership,
-        //     &self.role_admin,
-        // );
+        let access = NearAccessControlRegistry::read_only(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &self.role_membership,
+            &self.role_admin,
+        );
         // let whitelist = NearWhitelist::read_only(
         //     &access,
         //     &self.service_id_to_user_to_whitelist_status,
         //     &self.service_id_to_user_to_setter_to_indefinite_whitelist_status
         // );
-        let access = api3_common::dummy::DummyAccess::default();
+        // let access = api3_common::dummy::DummyAccess::default();
         let whitelist = api3_common::dummy::DummyWhitelist::default();
+        near_sdk::env::log(
+            format!("msg_sender: {:?}", msg_sender().0).as_bytes()
+        );
         api3_common::read_with_data_point_id(
             &data_point_id,
-            &Address::default(), // &msg_sender(),
+            &msg_sender(),
             &storage,
             &access,
             &whitelist,

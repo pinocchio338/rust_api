@@ -21,12 +21,25 @@ fn map_error(e: api3_common::Error) -> anchor_lang::error::Error {
     anchor_lang::error::Error::from(ProgramError::Custom(e.into()))
 }
 
+/// The DAPI server implementation.
+///
+/// Note that for solana there is no need to perform signature verification as we are
+/// asking the chain to perform signature verification for us. What's required is to check
+/// the results of the verification are correct.
+///
+/// All the read related functions can be implemented in client.
 #[program]
 pub mod beacon_server {
     use super::*;
 
-    /// Update a new beacon data point with signed data. The beacon id is used as
-    /// the seed to generate pda for the Beacon data account.
+    /// Updates a Beacon using data signed by the respective Airnode,
+    /// without requiring a request or subscription.
+    ///
+    ///
+    /// `datapoint_key` The PDA of the datapoint account
+    /// `template_id` Template ID
+    /// `timestamp` Timestamp used in the signature
+    /// `data` Response data (an `int256` encoded in contract ABI)
     pub fn update_beacon_with_signed_data(
         ctx: Context<DataPointAccount>,
         datapoint_key: [u8; 32],
@@ -210,30 +223,6 @@ pub struct DataPointIdAccount<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(datapoint_key: [u8; 32], name_hash: [u8; 32])]
-pub struct DataWithDataPointIdAccount<'info> {
-    #[account(
-        init_if_needed,
-        payer = user,
-        space = 8 + 33,
-        seeds = [b"hashed-name", name_hash.as_ref()],
-        bump
-    )]
-    pub hash: Account<'info, WrappedDataPointId>,
-    #[account(
-        init_if_needed,
-        payer = user,
-        space = 8 + 41,
-        seeds = [b"datapoint", datapoint_key.as_ref()],
-        bump
-    )]
-    pub datapoint: Account<'info, WrappedDataPoint>,
-    #[account(mut)]
-    pub user: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
 #[instruction(datapoint_key: [u8; 32])]
 pub struct DataPointAccount<'info> {
     #[account(
@@ -258,18 +247,6 @@ pub struct WrappedDataPoint {
 #[account]
 pub struct WrappedDataPointId {
     pub datapoint_id: [u8; 32],
-    pub bump: u8,
-}
-
-#[account]
-pub struct WrappedUserWithRole {
-    pub has_role: bool,
-    pub bump: u8,
-}
-
-#[account]
-pub struct WrappedRoleDetail {
-    pub admin_role: [u8; 32],
     pub bump: u8,
 }
 

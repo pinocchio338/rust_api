@@ -24,7 +24,7 @@ where
 {
     type Address = Address;
     fn user_is_whitelisted(&self, _service_id: &Bytes32, _user: &Self::Address) -> bool {
-        true
+        false
     }
     fn extend_whitelist_expiration(
         &mut self,
