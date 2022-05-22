@@ -2,6 +2,7 @@
 members = [
     "common",
     "near/contract",
+    "near/cross-contract-call-demo",
 ]
 exclude = [
 ]

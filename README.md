@@ -20,8 +20,3 @@ export BROWSER=""
 solana-keygen new
 anchor test
 ```
-
-TODO:
-- Check gas fee
-- Provide devnet script
-- Solana wallet from seeds
