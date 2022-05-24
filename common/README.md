@@ -12,3 +12,4 @@ are implemented:
   * Storage<T>: `common/src/beacon::Storage`handles the load/save of item type T in the chain
   * Whitelist: `common/src/whitelist.rs:20` handles the whitelist functions in the specific chain
   * AccessControlRegistry: `common/src/access::AccessControlRegistry` handles the access control related function in the specific chain
+  * SignatureManger: `common/src/beacon::SignatureManger` handles the onchain signature verification

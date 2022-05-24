@@ -4,13 +4,14 @@ mod whitelist;
 
 use crate::types::{Address, NearDataPoint};
 use crate::utils::{
-    msg_sender, Bytes32HashMap, DatapointHashMap, NearAccessControlRegistry, NearClock, SignatureVerify,
+    msg_sender, Bytes32HashMap, DatapointHashMap, NearAccessControlRegistry, NearClock,
+    SignatureVerify,
 };
-use api3_common::abi::{ Token, Uint };
-use api3_common::{derive_beacon_id, keccak_packed, process_beacon_update, AccessControlRegistry, Bytes, Bytes32, Error, SignatureManger, StaticRole};
+use crate::whitelist::{NearWhitelist, WhitelistStatus};
+use api3_common::abi::{Token, Uint};
+use api3_common::{derive_beacon_id, keccak_packed, process_beacon_update, AccessControlRegistry, Bytes, Bytes32, Error, SignatureManger, StaticRole, Whitelist};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{collections::LookupMap, near_bindgen};
-use crate::whitelist::{WhitelistStatus};
 
 near_sdk::setup_alloc!();
 
@@ -51,7 +52,7 @@ impl Default for DapiServer {
             role_membership,
             role_admin,
             service_id_to_user_to_whitelist_status,
-            service_id_to_user_to_setter_to_indefinite_whitelist_status
+            service_id_to_user_to_setter_to_indefinite_whitelist_status,
         }
     }
 }
@@ -90,7 +91,7 @@ impl DapiServer {
         );
         (
             access.find_static_role(StaticRole::UnlimitedReaderRole),
-            access.find_static_role(StaticRole::NameSetterRole)
+            access.find_static_role(StaticRole::NameSetterRole),
         )
     }
 
@@ -152,11 +153,14 @@ impl DapiServer {
     // ================== Datapoint ====================
     /// Updates a Beacon using data signed by the respective Airnode,
     /// without requiring a request or subscription
-    /// `airnode` Airnode address
-    /// `template_id` Template ID
-    /// `timestamp` Timestamp used in the signature
-    /// `data` Response data (an `int256` encoded in contract ABI)
-    /// `signature` Template ID, a timestamp and the response data signed by the Airnode address
+    ///
+    /// # Arguments
+    ///
+    /// * `airnode` Airnode address
+    /// * `template_id` Template ID
+    /// * `timestamp` Timestamp used in the signature
+    /// * `data` Response data (an `int256` encoded in contract ABI)
+    /// * `signature` Template ID, a timestamp and the response data signed by the Airnode address
     pub fn update_beacon_with_signed_data(
         &mut self,
         airnode: Bytes,
@@ -190,7 +194,9 @@ impl DapiServer {
     }
 
     /// Updates the dAPI that is specified by the beacon IDs
-    /// `beacon_ids` Beacon IDs
+    ///
+    /// # Arguments
+    /// * `beacon_ids` Beacon IDs
     pub fn update_dapi_with_beacons(&mut self, beacon_ids: Vec<Bytes32>) -> Bytes32 {
         let mut storage = DatapointHashMap::requires_write(&mut self.data_points);
         api3_common::update_dapi_with_beacons(&mut storage, &beacon_ids).unwrap()
@@ -199,11 +205,14 @@ impl DapiServer {
     /// Updates a dAPI using data signed by the respective Airnodes
     /// without requiring a request or subscription. The beacons for which the
     /// signature is omitted will be read from the storage.
-    /// `airnodes` Airnode addresses
-    /// `templateIds` Template IDs
-    /// `timestamps` Timestamps used in the signatures
-    /// `data` Response data (an `int256` encoded in contract ABI per Beacon)
-    /// `signatures` Template ID, a timestamp and the response data signed by the respective Airnode address per Beacon
+    ///
+    /// # Arguments
+    ///
+    /// * `airnodes` Airnode addresses
+    /// * `template_ids` Template IDs
+    /// * `timestamps` Timestamps used in the signatures
+    /// * `data` Response data (an `int256` encoded in contract ABI per Beacon)
+    /// * `signatures` Template ID, a timestamp and the response data signed by the respective Airnode address per Beacon
     pub fn update_dapi_with_signed_data(
         &mut self,
         airnodes: Vec<Bytes>,
@@ -232,17 +241,19 @@ impl DapiServer {
     /// provide a more abstract interface for convenience. This means a name
     /// that was pointing at a Beacon can be pointed to a dAPI, then another
     /// dAPI, etc.
-    /// `name` Human-readable name
-    /// `datapoint_id` Data point ID the name will point to
+    ///
+    /// # Arguments
+    ///
+    /// * `name` Human-readable name
+    /// * `datapoint_id` Data point ID the name will point to
     pub fn set_name(&mut self, name: Bytes32, datapoint_id: Bytes32) {
         let mut storage = Bytes32HashMap::requires_write(&mut self.name_hash_to_data_point_id);
-        // let access = NearAccessControlRegistry::read_only(
-        //     self.manager.clone(),
-        //     self.admin_role_description.clone(),
-        //     &self.role_membership,
-        //     &self.role_admin,
-        // );
-        let access = api3_common::dummy::DummyAccess::default();
+        let access = NearAccessControlRegistry::read_only(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &self.role_membership,
+            &self.role_admin,
+        );
         api3_common::set_name(name, datapoint_id, &msg_sender(), &access, &mut storage).unwrap()
     }
 
@@ -254,7 +265,10 @@ impl DapiServer {
     }
 
     /// Reads the data point with ID
-    /// `data_point_id` Data point ID
+    ///
+    /// # Arguments
+    ///
+    /// * `data_point_id` Data point ID
     pub fn read_with_data_point_id(&self, data_point_id: Bytes32) -> (Bytes32, u32) {
         let storage = DatapointHashMap::read_only(&self.data_points);
         let access = NearAccessControlRegistry::read_only(
@@ -263,16 +277,13 @@ impl DapiServer {
             &self.role_membership,
             &self.role_admin,
         );
-        // let whitelist = NearWhitelist::read_only(
-        //     &access,
-        //     &self.service_id_to_user_to_whitelist_status,
-        //     &self.service_id_to_user_to_setter_to_indefinite_whitelist_status
-        // );
-        // let access = api3_common::dummy::DummyAccess::default();
-        let whitelist = api3_common::dummy::DummyWhitelist::default();
-        near_sdk::env::log(
-            format!("msg_sender: {:?}", msg_sender().0).as_bytes()
+        let whitelist = NearWhitelist::read_only(
+            &access,
+            &self.service_id_to_user_to_whitelist_status,
+            &self.service_id_to_user_to_setter_to_indefinite_whitelist_status
         );
+
+        near_sdk::env::log(format!("msg_sender: {:?}", msg_sender().0).as_bytes());
         api3_common::read_with_data_point_id(
             &data_point_id,
             &msg_sender(),
@@ -291,23 +302,24 @@ impl DapiServer {
     /// Reads the data point with name
     /// The read data point may belong to a Beacon or dAPI. The reader
     /// must be whitelisted for the hash of the data point name.
-    /// `name` Data point name
+    ///
+    /// # Arguments
+    ///
+    /// * `name` Data point name
     pub fn read_with_name(&self, name: Bytes32) -> (Bytes32, u32) {
         let dp_s = DatapointHashMap::read_only(&self.data_points);
         let nh_s = Bytes32HashMap::read_only(&self.name_hash_to_data_point_id);
-        // let access = NearAccessControlRegistry::read_only(
-        //     self.manager.clone(),
-        //     self.admin_role_description.clone(),
-        //     &self.role_membership,
-        //     &self.role_admin,
-        // );
-        // let whitelist = NearWhitelist::read_only(
-        //     &access,
-        //     &self.service_id_to_user_to_whitelist_status,
-        //     &self.service_id_to_user_to_setter_to_indefinite_whitelist_status
-        // );
-        let access = api3_common::dummy::DummyAccess::default();
-        let whitelist = api3_common::dummy::DummyWhitelist::default();
+        let access = NearAccessControlRegistry::read_only(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &self.role_membership,
+            &self.role_admin,
+        );
+        let whitelist = NearWhitelist::read_only(
+            &access,
+            &self.service_id_to_user_to_whitelist_status,
+            &self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+        );
         api3_common::read_with_name(name, &msg_sender(), &dp_s, &nh_s, &access, &whitelist)
             .map(|(a, n)| {
                 let mut v = [0u8; 32];
@@ -317,25 +329,158 @@ impl DapiServer {
             .unwrap()
     }
 
-    /// @notice Returns if a reader can read the data point
-    /// `data_point_id` Data point ID (or data point name hash)
-    /// `reader` Reader address as raw bytes
+    /// Returns if a reader can read the data point
+    ///
+    /// # Arguments
+    ///
+    /// * `data_point_id` Data point ID (or data point name hash)
+    /// * `reader` Reader address as raw bytes
     pub fn reader_can_read_data_point(&self, data_point_id: Bytes32, reader: Bytes32) -> bool {
-        // let access = NearAccessControlRegistry::read_only(
-        //     self.manager.clone(),
-        //     self.admin_role_description.clone(),
-        //     &self.role_membership,
-        //     &self.role_admin,
-        // );
-        // let whitelist = NearWhitelist::read_only(
-        //     &access,
-        //     &self.service_id_to_user_to_whitelist_status,
-        //     &self.service_id_to_user_to_setter_to_indefinite_whitelist_status
-        // );
-        let access = api3_common::dummy::DummyAccess::default();
-        let whitelist = api3_common::dummy::DummyWhitelist::default();
+        let access = NearAccessControlRegistry::read_only(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &self.role_membership,
+            &self.role_admin,
+        );
+        let whitelist = NearWhitelist::read_only(
+            &access,
+            &self.service_id_to_user_to_whitelist_status,
+            &self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+        );
         let reader = Address(reader);
         api3_common::reader_can_read_data_point(&data_point_id, &reader, &access, &whitelist)
+    }
+
+    /// Extends the expiration of the temporary whitelist of `user` to
+    /// be able to use the service with `service_id` if the sender has the
+    /// whitelist expiration extender role
+    ///
+    /// # Arguments
+    ///
+    /// * `service_id` Service ID
+    /// * `user` User address
+    /// * `expiration_timestamp` Timestamp at which the temporary whitelist will expire
+    pub fn extend_whitelist_expiration(
+        &mut self,
+        service_id: Bytes32,
+        user: Bytes32,
+        expiration_timestamp: u64,
+    ) {
+        let access = NearAccessControlRegistry::read_only(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &self.role_membership,
+            &self.role_admin,
+        );
+        let mut whitelist = NearWhitelist::requires_write(
+            &access,
+            &mut self.service_id_to_user_to_whitelist_status,
+            &mut self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+        );
+        whitelist.extend_whitelist_expiration(
+            &service_id,
+            &Address(user),
+            expiration_timestamp
+        )
+    }
+
+    /// Sets the expiration of the temporary whitelist of `user` to be
+    /// able to use the service with `service_id` if the sender has the
+    /// whitelist expiration setter role
+    ///
+    /// # Arguments
+    ///
+    /// * `service_id` Service ID
+    /// * `user` User address
+    /// * `expiration_timestamp` Timestamp at which the temporary whitelist will expire
+    pub fn set_whitelist_expiration(
+        &mut self,
+        service_id: Bytes32,
+        user: Bytes32,
+        expiration_timestamp: u64,
+    ) {
+        let access = NearAccessControlRegistry::read_only(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &self.role_membership,
+            &self.role_admin,
+        );
+        let mut whitelist = NearWhitelist::requires_write(
+            &access,
+            &mut self.service_id_to_user_to_whitelist_status,
+            &mut self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+        );
+        whitelist.set_whitelist_expiration(
+            &service_id,
+            &Address(user),
+            expiration_timestamp
+        )
+    }
+
+    /// Sets the indefinite whitelist status of `user` to be able to
+    /// use the service with `service_id` if the sender has the indefinite whitelister role
+    ///
+    /// # Arguments
+    ///
+    /// * `service_id` Service ID
+    /// * `user` User address
+    /// * `status` Indefinite whitelist status
+    pub fn set_indefinite_whitelist_status(
+        &mut self,
+        service_id: Bytes32,
+        user: Bytes32,
+        status: bool,
+    ) -> Bytes32 {
+        let access = NearAccessControlRegistry::read_only(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &self.role_membership,
+            &self.role_admin,
+        );
+        let mut whitelist = NearWhitelist::requires_write(
+            &access,
+            &mut self.service_id_to_user_to_whitelist_status,
+            &mut self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+        );
+        let r = whitelist.set_indefinite_whitelist_status(
+            &service_id,
+            &Address(user),
+            status
+        );
+        Bytes32::from(r)
+    }
+
+    /// Revokes the indefinite whitelist status granted to the user for
+    /// the service by a specific account
+    ///
+    /// # Arguments
+    ///
+    /// * `service_id` Service ID
+    /// * `user` User address
+    /// * `setter` Setter address
+    pub fn revoke_indefinite_whitelist_status(
+        &mut self,
+        service_id: Bytes32,
+        user: Bytes32,
+        setter: Bytes32,
+    ) -> (bool, Bytes32) {
+        let access = NearAccessControlRegistry::read_only(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &self.role_membership,
+            &self.role_admin,
+        );
+        let mut whitelist = NearWhitelist::requires_write(
+            &access,
+            &mut self.service_id_to_user_to_whitelist_status,
+            &mut self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+        );
+        let (revoked, r) = whitelist.revoke_indefinite_whitelist_status(
+            &service_id,
+            &Address(user),
+            &Address(setter),
+        );
+        (revoked, Bytes32::from(r))
     }
 }
 

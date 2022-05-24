@@ -1,6 +1,9 @@
 use crate::types::{Address, NearDataPoint};
-use api3_common::abi::{Token};
-use api3_common::{keccak_packed, AccessControlRegistry, Bytes32, DataPoint, Error, SignatureManger, Storage, TimestampChecker, AccessControlRegistryAdminnedWithManager, RoleDeriver};
+use api3_common::abi::Token;
+use api3_common::{
+    keccak_packed, AccessControlRegistry, AccessControlRegistryAdminnedWithManager, Bytes32,
+    DataPoint, Error, RoleDeriver, SignatureManger, Storage, TimestampChecker,
+};
 use ed25519_dalek::Verifier;
 use near_sdk::collections::LookupMap;
 
@@ -180,7 +183,7 @@ impl<'a> NearAccessControlRegistry<'a> {
     }
 }
 
-impl <'a> AccessControlRegistryAdminnedWithManager for NearAccessControlRegistry<'a> {
+impl<'a> AccessControlRegistryAdminnedWithManager for NearAccessControlRegistry<'a> {
     type Address = Address;
 
     fn manager(&self) -> &Self::Address {
@@ -198,7 +201,7 @@ impl <'a> AccessControlRegistryAdminnedWithManager for NearAccessControlRegistry
     fn admin_role(&self) -> Bytes32 {
         RoleDeriver::derive_role(
             RoleDeriver::derive_root_role(&self.manager.0),
-            self.admin_role_description()
+            self.admin_role_description(),
         )
     }
 }
@@ -226,7 +229,7 @@ impl<'a> AccessControlRegistry for NearAccessControlRegistry<'a> {
 
     fn get_role_admin(&self, role: &Bytes32) -> Option<Bytes32> {
         if *role == Self::DEFAULT_ADMIN_ROLE {
-            return Some(Self::DEFAULT_ADMIN_ROLE)
+            return Some(Self::DEFAULT_ADMIN_ROLE);
         }
         match &self.role_admin {
             ReadWrite::ReadOnly(a) => (*a).get(role).map(Bytes32::from),
