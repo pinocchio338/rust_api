@@ -1,7 +1,7 @@
 #![allow(clippy::assign_op_pattern)]
 #![allow(clippy::ptr_offset_with_cast)]
 
-use crate::Bytes;
+use crate::{Bytes, Bytes32};
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::io;
 use uint::construct_uint;
@@ -31,6 +31,14 @@ impl BorshSerialize for U256 {
         let mut v = [0u8; 32];
         self.to_big_endian(&mut v);
         BorshSerialize::serialize(&v, writer)
+    }
+}
+
+impl From<&U256> for Bytes32 {
+    fn from(u: &U256) -> Self {
+        let mut v = Bytes32::default();
+        u.to_big_endian(&mut v);
+        v
     }
 }
 

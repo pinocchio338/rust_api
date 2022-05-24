@@ -50,6 +50,8 @@ pub enum Error {
     RoleAdminNotFound,
     #[error("Contract already initialized")]
     AlreadyInitialized,
+    #[error("Cannot set indefinite status")]
+    CannotSetIndefiniteStatus,
 }
 
 impl From<Error> for u32 {
@@ -78,6 +80,7 @@ impl From<Error> for u32 {
             Error::NotAuthorized => 22,
             Error::RoleAdminNotFound => 23,
             Error::AlreadyInitialized => 24,
+            Error::CannotSetIndefiniteStatus => 25,
         }
     }
 }

@@ -77,11 +77,11 @@ where
         true
     }
 
-    fn has_indefinite_whitelister_role_or_is_manager(&self, _account: Self::Address) -> bool {
+    fn has_indefinite_whitelister_role_or_is_manager(&self, _account: &Self::Address) -> bool {
         true
     }
 
-    fn has_whitelist_expiration_setter_role_or_is_manager(&self, _account: Self::Address) -> bool {
+    fn has_whitelist_expiration_setter_role_or_is_manager(&self, _account: &Self::Address) -> bool {
         true
     }
 }
@@ -119,6 +119,17 @@ where
         _user: &<Self as Whitelist>::Address,
         _expiration_timestamp: u64,
     ) {
+    }
+
+    fn set_whitelist_expiration(&mut self, _service_id: &Bytes32, _user: &<Self as Whitelist>::Address, _expiration_timestamp: u64) {
+    }
+
+    fn set_indefinite_whitelist_status(&mut self, _service_id: &Bytes32, _user: &<Self as Whitelist>::Address, _status: bool) -> U256 {
+        U256::from(0u8)
+    }
+
+    fn revoke_indefinite_whitelist_status(&mut self, _service_id: &Bytes32, _user: &<Self as Whitelist>::Address, _setter: &<Self as Whitelist>::Address) -> (bool, U256) {
+        (false, U256::from(0u8))
     }
 }
 
