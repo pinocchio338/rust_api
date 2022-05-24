@@ -95,7 +95,7 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> Whitelist for NearWhi
         let hash = Self::double_hash(service_id, &user.0);
         let s = match &self.service_id_to_user_to_whitelist_status {
             ReadWrite::ReadOnly(s) => *s,
-            ReadWrite::Write(s) => *(&*s),
+            ReadWrite::Write(s) => *s,
         };
         s.get(&hash)
             .map(|status| {
@@ -168,7 +168,7 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> Whitelist for NearWhi
         let mut indefinite_count = whitelist
             .get(&w_hash)
             .map(|f| U256::from_big_endian(&f.indefinite_whitelist_count))
-            .unwrap_or(U256::from(0u32));
+            .unwrap_or_else(|| U256::from(0u32));
         let indefinite_status = indefinite.get(&i_hash).unwrap_or(false);
 
         if status && !indefinite_status {
@@ -176,7 +176,7 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> Whitelist for NearWhi
             indefinite.insert(&i_hash, &true);
             let mut whitelist_status = whitelist
                 .remove(&w_hash)
-                .unwrap_or(WhitelistStatus::default());
+                .unwrap_or_default();
             indefinite_count = indefinite_count.add(U256::from(1u8));
             whitelist_status.indefinite_whitelist_count = Bytes32::from(&indefinite_count);
             whitelist.insert(&w_hash, &whitelist_status);
@@ -185,7 +185,7 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> Whitelist for NearWhi
             indefinite.insert(&i_hash, &false);
             let mut whitelist_status = whitelist
                 .remove(&w_hash)
-                .unwrap_or(WhitelistStatus::default());
+                .unwrap_or_default();
             indefinite_count = indefinite_count.sub(U256::from(1u8));
             whitelist_status.indefinite_whitelist_count = Bytes32::from(&indefinite_count);
             whitelist.insert(&w_hash, &whitelist_status);
@@ -217,7 +217,7 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> Whitelist for NearWhi
         let mut indefinite_count = whitelist
             .get(&user_hash)
             .map(|f| U256::from_big_endian(&f.indefinite_whitelist_count))
-            .unwrap_or(U256::from(0u32));
+            .unwrap_or_else(|| U256::from(0u32));
 
         let indefinite_status = indefinite.get(&setter_hash).unwrap_or(false);
         if indefinite_status {
@@ -226,7 +226,7 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> Whitelist for NearWhi
 
             let mut whitelist_status = whitelist
                 .remove(&user_hash)
-                .unwrap_or(WhitelistStatus::default());
+                .unwrap_or_default();
             indefinite_count = indefinite_count.sub(U256::from(1u8));
             whitelist_status.indefinite_whitelist_count = Bytes32::from(&indefinite_count);
             whitelist.insert(&user_hash, &whitelist_status);

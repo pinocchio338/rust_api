@@ -135,7 +135,7 @@ pub(crate) fn msg_sender() -> Address {
     let sender = near_sdk::env::predecessor_account_id();
     let sender_bytes = sender.as_bytes();
     let mut v = Bytes32::default();
-    v[0..sender_bytes.len()].copy_from_slice(&sender_bytes);
+    v[0..sender_bytes.len()].copy_from_slice(sender_bytes);
     Address(v)
 }
 
