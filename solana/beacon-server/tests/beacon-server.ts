@@ -3,13 +3,8 @@ import { expect } from "chai";
 import nacl from 'tweetnacl';
 import * as fs from "fs";
 import { 
-  bufferU64BE, createRawDatapointBuffer,
-  deriveDApiId,
-  deriveNameHashPDA, encodeData, keccak256Packed, 
-  prepareMessage,
-  relayTxn
+  bufferU64BE, getRandomInt, median, prepareMessage, relayTxn
 } from "./utils";
-import { createInstructionWithPublicKey } from "./sig";
 import { DapiClient } from "./client";
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
@@ -34,19 +29,19 @@ describe("beacon-server", () => {
   // define all the data
   const templateId1 = 1;
   const timestamp1 = Math.floor(Date.now() / 1000);    
-  const data1 = 121;
+  const data1 = getRandomInt(10000000);
 
-  const templateId2 = 1;
-  const timestamp2 = Math.floor(Date.now() / 1000);    
-  const data2 = 122;
+  const templateId2 = 2;
+  const timestamp2 = Math.floor(Date.now() / 1000) - getRandomInt(500);
+  const data2 = getRandomInt(10000000);
 
-  const templateID3 = 1;
-  const timestamp3 = Math.floor(Date.now() / 1000);
-  const data3 = 123;
+  const templateId3 = 3;
+  let timestamp3 = Math.floor(Date.now() / 1000) - getRandomInt(500);
+  let data3 = getRandomInt(10000000);
 
-  const templateID4 = 1;
-  const timestamp4 = Math.floor(Date.now() / 1000);
-  const data4 = 125;
+  const templateId4 = 4;
+  const timestamp4 = Math.floor(Date.now() / 1000) - getRandomInt(500);
+  const data4 = getRandomInt(10000000);
 
   const name = bufferU64BE(123);
   
@@ -65,7 +60,7 @@ describe("beacon-server", () => {
     it("works", async () => {
       // 1. Airnode create the txn    
       const [airnodeSignature, airnodeTxn] = await dapiClient.newUpdateBeaconWithSignedDataTxn(
-        templateID3,
+        templateId3,
         timestamp3,
         data3,
         airnode3,
@@ -82,7 +77,37 @@ describe("beacon-server", () => {
       await delay(1000);
   
       // Check test response
-      const beaconId = dapiClient.deriveBeaconId(airnode3.publicKey.toBytes(), templateID3);
+      const beaconId = dapiClient.deriveBeaconId(airnode3.publicKey.toBytes(), templateId3);
+      const datapoint = await dapiClient.readWithDataPointId(beaconId);
+  
+      // construct expected
+      expect(datapoint.value).to.deep.eq(data3);
+      expect(datapoint.timestamp).to.deep.eq(timestamp3);
+    });
+
+    it("overwrite old data", async () => {
+      // 1. Airnode create the txn
+      timestamp3 = Math.floor(Date.now() / 1000) + getRandomInt(100);
+      data3 = getRandomInt(10000000);
+      const [airnodeSignature, airnodeTxn] = await dapiClient.newUpdateBeaconWithSignedDataTxn(
+        templateId3,
+        timestamp3,
+        data3,
+        airnode3,
+        messageRelayer.publicKey
+      );
+  
+      // 2. Relay the transaction
+      const offlineTxn = await relayTxn(airnodeTxn, airnodeSignature, airnode3.publicKey, messageRelayer);
+  
+      // 3. Send transaction
+      await provider.connection.sendRawTransaction(offlineTxn);
+  
+      // wait a bit for the transaction to take effect
+      await delay(1000);
+  
+      // Check test response
+      const beaconId = dapiClient.deriveBeaconId(airnode3.publicKey.toBytes(), templateId3);
       const datapoint = await dapiClient.readWithDataPointId(beaconId);
   
       // construct expected
@@ -92,8 +117,8 @@ describe("beacon-server", () => {
 
     it("invalid signature", async () => {
       // 1. Airnode create the txn    
-      const [airnodeSignature, airnodeTxn] = await dapiClient.newUpdateBeaconWithSignedDataTxn(
-        templateID3,
+      const [_, airnodeTxn] = await dapiClient.newUpdateBeaconWithSignedDataTxn(
+        templateId3,
         timestamp3,
         data3,
         airnode3,
@@ -114,7 +139,7 @@ describe("beacon-server", () => {
     it("works", async () => {
       // Create the datapoint 4 
       const [airnodeSignature, airnodeTxn] =  await dapiClient.newUpdateBeaconWithSignedDataTxn(
-        templateID4,
+        templateId4,
         timestamp4,
         data4,
         airnode4,
@@ -126,20 +151,20 @@ describe("beacon-server", () => {
       // wait a bit for the transaction to take effect
       await delay(1000);
 
-      const beaconId4 = dapiClient.deriveBeaconId(airnode4.publicKey.toBytes(), templateID4);
+      const beaconId4 = dapiClient.deriveBeaconId(airnode4.publicKey.toBytes(), templateId4);
       const datapoint = await dapiClient.readWithDataPointId(beaconId4);
       expect(datapoint.value).to.deep.eq(data4);
       expect(datapoint.timestamp).to.deep.eq(timestamp4);
 
       // now test updateDapiWithBeacons
-      const beaconId3 = dapiClient.deriveBeaconId(airnode3.publicKey.toBytes(), templateID3);
+      const beaconId3 = dapiClient.deriveBeaconId(airnode3.publicKey.toBytes(), templateId3);
       const beaconIds = [beaconId3, beaconId4];
       const dataPointId = dapiClient.deriveDapiId(beaconIds);
       
       await dapiClient.updateDapiWithBeacons(beaconIds, messageRelayer);
       const dapi = await dapiClient.readWithDataPointId(dataPointId);
-      expect(dapi.timestamp).to.eq((timestamp3 + timestamp4) / 2);
-      expect(dapi.value).to.eq((data3 + data4) / 2);
+      expect(dapi.timestamp).to.eq(Math.floor((timestamp3 + timestamp4) / 2));
+      expect(dapi.value).to.eq(Math.floor((data3 + data4) / 2));
     });
   });
 
@@ -153,15 +178,14 @@ describe("beacon-server", () => {
       const message2 = prepareMessage(templateId2, timestamp2, data2);
       const sig2 = nacl.sign.detached(message2, airnode2.secretKey);
       
-      // Step 3. Airnode3 no data
-      const templateId3 = 1;
-      const timestamp3 = 1649133997; 
-      
+      const newTimestamp = timestamp3 + 10000;
+      const newData = data3 + 10;
+
       await dapiClient.updateDapiWithSignedData(
         [airnode1.publicKey, airnode2.publicKey, airnode3.publicKey],
         [templateId1, templateId2, templateId3],
-        [timestamp1, timestamp2, timestamp3],
-        [data1, data2, data1],
+        [timestamp1, timestamp2, newTimestamp],
+        [data1, data2, newData],
         [
           { publicKey: airnode1.publicKey.toBytes(), message: message1, signature: sig1 },
           { publicKey: airnode2.publicKey.toBytes(), message: message2, signature: sig2 }
@@ -179,8 +203,9 @@ describe("beacon-server", () => {
       const dapi = dapiClient.deriveDapiId(beaconIds);
       
       const datapoint = await dapiClient.readWithDataPointId(dapi);
-      expect(datapoint.value).to.eq(data2);
-      expect(datapoint.timestamp).to.eq(timestamp2);
+      // newData and newTimestamp are not reflected here
+      expect(datapoint.value).to.eq(median([data1, data2, data3]));
+      expect(datapoint.timestamp).to.eq(Math.floor((timestamp1 + timestamp2 + timestamp3) / 3));
     });
 
     it("wrong signature", async () => {
@@ -190,11 +215,7 @@ describe("beacon-server", () => {
       // Step 2. Airnode2 create the data
       const message2 = prepareMessage(templateId2, timestamp2, data2);
       const sig2 = nacl.sign.detached(message2, airnode2.secretKey);
-      
-      // Step 3. Airnode3 no data
-      const templateId3 = 1;
-      const timestamp3 = 1649133997; 
-      
+            
       try {
         await dapiClient.updateDapiWithSignedData(
           [airnode1.publicKey, airnode2.publicKey, airnode3.publicKey],
@@ -216,7 +237,7 @@ describe("beacon-server", () => {
 
   describe("setName", () => {
     it("works", async () => {
-      const beaconId = dapiClient.deriveBeaconId(airnode3.publicKey.toBytes(), templateID3);
+      const beaconId = dapiClient.deriveBeaconId(airnode3.publicKey.toBytes(), templateId3);
 
       await dapiClient.setName(name, beaconId, provider.wallet.publicKey);
   
@@ -245,9 +266,9 @@ describe("beacon-server", () => {
         102, 174, 178, 53, 25,  61,  63,  16,
         76, 210,  51, 189,  74,  91,  76, 129
       ];
-      const beaconId1 = dapiClient.deriveBeaconId(Buffer.from(publicKey1), templateID3);
-      const beaconId2 = dapiClient.deriveBeaconId(Buffer.from(publicKey2), templateID3);
-      const dapiId = deriveDApiId([beaconId1, beaconId2]);
+      const beaconId1 = dapiClient.deriveBeaconId(Buffer.from(publicKey1), 1);
+      const beaconId2 = dapiClient.deriveBeaconId(Buffer.from(publicKey2), 1);
+      const dapiId = dapiClient.deriveDapiId([beaconId1, beaconId2]);
       const expected = [
         110,  19,  32, 193, 151,  76, 132,
         243, 209, 249, 115,  27, 118, 162,
@@ -267,7 +288,7 @@ describe("beacon-server", () => {
         102, 174, 178, 254, 233,  61,  63,  16,
         76, 210,  51, 189,  74,  91,  76, 129
       ];
-      const beaconId = dapiClient.deriveBeaconId(Buffer.from(publicKey), templateID3);
+      const beaconId = dapiClient.deriveBeaconId(Buffer.from(publicKey), 1);
       const expected = [
         29, 240, 119, 252, 172, 145, 146, 209,
        118, 116, 187,   7,  80, 114, 122,  33,
