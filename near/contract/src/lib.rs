@@ -196,6 +196,7 @@ impl DapiServer {
     /// Updates the dAPI that is specified by the beacon IDs
     ///
     /// # Arguments
+    ///
     /// * `beacon_ids` Beacon IDs
     pub fn update_dapi_with_beacons(&mut self, beacon_ids: Vec<Bytes32>) -> Bytes32 {
         let mut storage = DatapointHashMap::requires_write(&mut self.data_points);

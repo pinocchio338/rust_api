@@ -1,5 +1,37 @@
 import { ethers } from "ethers";
 import * as anchor from "@project-serum/anchor";
+import nacl from "tweetnacl";
+
+export async function relayTxn(
+    rawTxn: Buffer,
+    storageSignature: Uint8Array,
+    storageFunderKey: anchor.web3.PublicKey,
+    relayer: anchor.web3.Keypair,
+  ): Promise<Buffer> {
+    const relayerSignature = nacl.sign.detached(rawTxn, relayer.secretKey);
+    let recoverTx = anchor.web3.Transaction.populate(anchor.web3.Message.from(rawTxn));
+    recoverTx.addSignature(relayer.publicKey, Buffer.from(relayerSignature));
+    recoverTx.addSignature(storageFunderKey, Buffer.from(storageSignature));
+  
+    return recoverTx.serialize();
+}
+
+export class Datapoint {
+    public value: number;
+    public timestamp: number;
+
+    constructor(value: number, timestamp: number) {
+        this.timestamp = timestamp;
+        this.value = value;
+    }
+
+    public static deserialize(bytes: Buffer): Datapoint {
+        return new Datapoint(
+            Number(BigInt(`0x${bytes.slice(0, 32).toString("hex")}`)),
+            Number(bytes.readUInt32BE(32))
+        )
+    }
+}
 
 export function createRawDatapointBuffer(data: number, timestamp: number): Buffer {
     const expected = Buffer.allocUnsafe(36);
