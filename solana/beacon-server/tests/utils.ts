@@ -110,3 +110,22 @@ export async function deriveNameHashPDA(nameHash: Buffer, programId: anchor.web3
     );
     return pda;
 }
+
+export function median(values: number[]): number {
+    if(values.length ===0) throw new Error("No inputs");
+  
+    values.sort(function(a,b){
+      return a-b;
+    });
+  
+    var half = Math.floor(values.length / 2);
+    
+    if (values.length % 2)
+      return values[half];
+    
+    return Math.floor((values[half - 1] + values[half]) / 2);
+}
+
+export function getRandomInt(max: number): number {
+    return Math.floor(Math.random() * max);
+}
