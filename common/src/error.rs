@@ -52,6 +52,10 @@ pub enum Error {
     AlreadyInitialized,
     #[error("Cannot set indefinite status")]
     CannotSetIndefiniteStatus,
+    #[error("Template id cannot be zero")]
+    TempalteIdZero,
+    #[error("Airnode id cannot be zero")]
+    AirnodeIdZero
 }
 
 impl From<Error> for u32 {
@@ -81,6 +85,8 @@ impl From<Error> for u32 {
             Error::RoleAdminNotFound => 23,
             Error::AlreadyInitialized => 24,
             Error::CannotSetIndefiniteStatus => 25,
+            Error::TempalteIdZero => 26,
+            Error::AirnodeIdZero => 27,
         }
     }
 }

@@ -60,6 +60,23 @@ class DapiServer {
         );
     }
 
+    async deriveBeaconId(airnode, templateId) {
+        return await this.contract.derive_beacon_id(
+            {
+                airnode: [...airnode],
+                template_id: [...templateId]
+            }
+        );
+    }
+
+    async deriveBeaconSetId(beaconIds) {
+        return await this.contract.derive_beacon_set_id(
+            {
+                beacon_ids: beaconIds
+            }
+        );
+    }
+
     async dapiNameToDataFeedId(name) {
         return await this.contract.name_to_data_point_id(
             {

@@ -10,6 +10,9 @@ const {
 const { 
   senderNotNameSetter, setsDAPIName, dAPINameZero
 } = require("./tests/setName");
+const { 
+  derivesBeaconId, templateIdZero, airnodeZero, derivesBeaconSetId,
+} = require("./tests/derive");
 const { generateRandomBytes32, bufferU64BE, toBuffer, currentTimestamp, deriveBeaconId, deriveDApiId } = require("./util");
 const fs = require("fs");
 const ethers = require("ethers");
@@ -67,7 +70,14 @@ describe('Token', function () {
   beforeAll(async function () {
     near = await nearAPI.connect(config);
     contract = await near.loadContract(contractAccount, {
-      viewMethods: ['has_role', 'read_with_data_point_id', 'roles', 'name_to_data_point_id'],
+      viewMethods: [
+        'has_role',
+        'read_with_data_point_id',
+        'roles',
+        'name_to_data_point_id',
+        'derive_beacon_id',
+        'derive_beacon_set_id'
+      ],
       changeMethods: [
         'initialize',
         'grant_role',
@@ -196,61 +206,9 @@ describe('Token', function () {
     // });
   });
 
-  // describe('updateDapiWithSignedData', function () {
-  //   it('works', async function () {
-  //     const timestamp = Math.floor(Date.now() / 1000);
-  //     const message3 = prepareMessage(templateId3, timestamp, data3);
-  //     const sig3 = keyPair.sign(message3);
-
-  //     const pubKeyBuf = toBuffer(keyPair.getPublicKey().data);
-  //     const t1 = Math.floor(Date.now() / 1000);
-  //     const t2 = Math.floor(Date.now() / 1000);
-  //     await contract.update_dapi_with_signed_data(
-  //       {
-  //         args: {
-  //           airnodes: [
-  //             [...pubKeyBuf],
-  //             [...pubKeyBuf],
-  //             [...pubKeyBuf]
-  //           ],
-  //           template_ids: [
-  //             [...bufferU64BE(templateId1)],
-  //             [...bufferU64BE(templateId2)],
-  //             [...bufferU64BE(templateId3)]
-  //           ],
-  //           timestamps: [
-  //             [...bufferU64BE(t1)],
-  //             [...bufferU64BE(t2)],
-  //             [...bufferU64BE(timestamp)],
-  //           ],
-  //           data: [
-  //             [...encodeData(data1)],
-  //             [...encodeData(data2)],
-  //             [...encodeData(data3)]
-  //           ],
-  //           signatures: [
-  //             [],
-  //             [],
-  //             [...toBuffer(sig3.signature)]
-  //           ],
-  //         }
-  //       }
-  //     );
-
-  //     // const beaconId1 = deriveBeaconId(pubKeyBuf, templateId1);
-  //     // const beaconId2 = deriveBeaconId(pubKeyBuf, templateId2);
-  //     // const beaconId3 = deriveBeaconId(pubKeyBuf, templateId3);
-  //     // const beaconIds = [beaconId1, beaconId2, beaconId3];
-  //     // const dataPointId = deriveDApiId(beaconIds);
-  //     // let data = await contract.read_with_data_point_id(
-  //     //   {
-  //     //     data_point_id: [...dataPointId]
-  //     //   }
-  //     // );
-  //     // expect(data[0]).toEqual([...bufferU64BE((data1 + data2 + data3) / 3)]);
-  //   });
-  // });
-
+  describe('updateDapiWithSignedData', function () {
+  });
+  
   describe('setName', function () {
     // it('setsDAPIName', async function () {
     //   const roles = await contract.roles();
@@ -274,6 +232,26 @@ describe('Token', function () {
 
     // it('dAPINameZero', async function () {
     //   await dAPINameZero(client);
+    // });
+  });
+
+  describe('deriveBeaconId', function () {
+    // it('derivesBeaconId', async function () {
+    //   await derivesBeaconId(client, keyPair.getPublicKey().data, templateId);
+    // });
+
+    // it('templateIdZero', async function () {
+    //   await templateIdZero(client, keyPair.getPublicKey().data);
+    // });
+
+    // it('airnodeZero', async function () {
+    //   await airnodeZero(client, templateId);
+    // });
+  });
+
+  describe('deriveBeaconSetId', function () {
+    // it('derivesBeaconSetId', async function () {
+    //   await derivesBeaconSetId(client, [[...generateRandomBytes32()], [...generateRandomBytes32()]]);
     // });
   });
 
