@@ -9,7 +9,7 @@ use crate::utils::{
 };
 use crate::whitelist::{NearWhitelist, WhitelistStatus};
 use api3_common::abi::{Token, Uint};
-use api3_common::{derive_beacon_id, keccak_packed, process_beacon_update, AccessControlRegistry, Bytes, Bytes32, Error, SignatureManger, StaticRole, Whitelist};
+use api3_common::{keccak_packed, process_beacon_update, AccessControlRegistry, Bytes, Bytes32, Error, SignatureManger, StaticRole, Whitelist};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{collections::LookupMap, near_bindgen};
 
@@ -183,7 +183,7 @@ impl DapiServer {
             panic!("Signature verification wrong");
         }
 
-        let beacon_id = derive_beacon_id(airnode.to_vec(), template_id);
+        let beacon_id = api3_common::derive_beacon_id(airnode.to_vec(), template_id);
         process_beacon_update(
             &mut storage,
             beacon_id,
@@ -263,6 +263,28 @@ impl DapiServer {
     pub fn name_to_data_point_id(&self, name: Bytes32) -> Option<Bytes32> {
         self.name_hash_to_data_point_id
             .get(&keccak_packed(&[Token::FixedBytes(name.to_vec())]))
+    }
+
+    /// Derives the beacon set ID from the beacon IDs
+    /// Notice that `encode()` is used over `encode_packed()`
+    /// Returns the derived dapi id
+    ///
+    /// # Arguments
+    ///
+    /// * `beacon_ids` Beacon IDs
+    pub fn derive_beacon_set_id(&self, beacon_ids: Vec<Bytes32>) -> Bytes32 {
+        api3_common::derive_dapi_id(&beacon_ids)
+    }
+
+    /// Derives the beacon id based on the `airnode` and `templated_id`
+    /// Returns the beacon id
+    ///
+    /// # Arguments
+    ///
+    /// * `airnode` Airnode address
+    /// * `template_id` Template ID
+    pub fn derive_beacon_id(&self, airnode: Bytes, template_id: Bytes32) -> Bytes32 {
+        api3_common::derive_beacon_id(airnode, template_id)
     }
 
     /// Reads the data point with ID
