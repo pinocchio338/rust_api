@@ -79,8 +79,10 @@ function array_equals(a, b) {
     return true;
 }
 
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
+
 module.exports = {
     keccak256Packed, currentTimestamp, encodeData, prepareMessage,
     generateRandomBytes32, toBuffer, bufferU64BE, encodeAndSignData,
-    deriveBeaconId, deriveDApiId, ensure, array_equals
+    deriveBeaconId, deriveDApiId, ensure, array_equals, delay
 };

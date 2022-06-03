@@ -10,7 +10,7 @@ const {
 const { 
   senderNotNameSetter, setsDAPIName, dAPINameZero
 } = require("./tests/setName");
-const { 
+const {
   derivesBeaconId, templateIdZero, airnodeZero, derivesBeaconSetId,
 } = require("./tests/derive");
 const { generateRandomBytes32, bufferU64BE, toBuffer, currentTimestamp, deriveBeaconId, deriveDApiId } = require("./util");
@@ -21,6 +21,7 @@ const { connect, KeyPair, keyStores, providers } = require("near-api-js");
 const path = require("path");
 const { base64 } = require("ethers/lib/utils");
 const { assert } = require("console");
+const { updatesBeaconSetWithSignedData, updatedSetValueOutdated, lengthNotCorrect, notAllSignaturesValid, notAllTimestampValid, parameterLengthMismatch } = require("./tests/updateBeaconSetWithSignedData");
 const homedir = require("os").homedir();
 const CREDENTIALS_DIR = ".near-credentials";
 const credentialsPath = path.join(homedir, CREDENTIALS_DIR);
@@ -204,9 +205,43 @@ describe('Token', function () {
     // it('lessThanTwoBeacons', async function () {
     //   await lessThanTwoBeacons(client);
     // });
+
   });
 
-  describe('updateDapiWithSignedData', function () {
+  describe('updateBeaconSetWithSignedData', function () {
+    // it('updatesBeaconSetWithSignedData', async function () {
+    //   await updatesBeaconSetWithSignedData(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
+    // });
+
+    // it('updatedSetValueOutdated', async function () {
+    //   await updatedSetValueOutdated(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
+    // });
+
+    // it('dataValueExceedingRange', async function () {
+    //   // TODO: we are using U256 internally, not sure if this is still needed  
+    // });
+
+    // it('lengthNotCorrect', async function () {
+    //   // TODO: debugging
+    //   // await lengthNotCorrect(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
+    // });
+
+    // it('notAllSignaturesValid', async function () {
+    //   await notAllSignaturesValid(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
+    // });
+
+    // it('notAllTimestampValid', async function () {
+    //   // TODO
+    //   await notAllTimestampValid(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
+    // });
+
+    // it('lessThanTwoBeacons', async function () {
+    //   await lessThanTwoBeacons(client);
+    // });
+
+    // it('parameterLengthMismatch', async function () {
+    //   await parameterLengthMismatch(client, keyPair.getPublicKey().data, beaconSetTemplateIds);
+    // });
   });
   
   describe('setName', function () {
