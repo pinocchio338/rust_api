@@ -248,8 +248,12 @@ impl<'a> AccessControlRegistry for NearAccessControlRegistry<'a> {
     }
 
     fn renounce_role(&mut self, role: &Bytes32, account: &Self::Address) -> Result<(), Error> {
-        // let sender = msg_sender();
-        // api3_common::ensure!(*account == sender, Error::NotAuthorized)?;
+        let sender = msg_sender();
+        api3_common::ensure!(*account == sender, Error::NotAuthorized)?;
+        self.revoke_role(role, account)
+    }
+
+    fn revoke_role(&mut self, role: &Bytes32, account: &Self::Address) -> Result<(), Error> {
         let hash = Self::hash_membership(role, account);
 
         let m = match &mut self.role_membership {

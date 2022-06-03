@@ -183,4 +183,8 @@ where
     fn renounce_role(&mut self, _role: &Bytes32, _account: &Self::Address) -> Result<(), Error> {
         Ok(())
     }
+
+    fn revoke_role(&mut self, _role: &Bytes32, _account: &Self::Address) -> Result<(), Error> {
+        Ok(())
+    }
 }

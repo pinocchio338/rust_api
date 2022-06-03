@@ -22,6 +22,9 @@ const path = require("path");
 const { base64 } = require("ethers/lib/utils");
 const { assert } = require("console");
 const { updatesBeaconSetWithSignedData, updatedSetValueOutdated, lengthNotCorrect, notAllSignaturesValid, notAllTimestampValid, parameterLengthMismatch } = require("./tests/updateBeaconSetWithSignedData");
+const { readerZeroAddress, readerNotWhitelisted, readerWhitelisted, readerUnlimitedReaderRole } = require("./tests/readerCanReadDataFeed");
+const { dataFeedIdToReaderToWhitelistStatus, dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus } = require("./tests/whitelist");
+const { revokeRole, renounceRole } = require("./tests/role");
 const homedir = require("os").homedir();
 const CREDENTIALS_DIR = ".near-credentials";
 const credentialsPath = path.join(homedir, CREDENTIALS_DIR);
@@ -77,17 +80,23 @@ describe('Token', function () {
         'roles',
         'name_to_data_point_id',
         'derive_beacon_id',
-        'derive_beacon_set_id'
+        'derive_beacon_set_id',
+        'reader_can_read_data_point',
+        'data_feed_id_to_whitelist_status',
+        'data_feed_id_to_reader_to_setter_to_indefinite_whitelist_status',
       ],
       changeMethods: [
         'initialize',
         'grant_role',
         'renounce_role',
+        'revoke_role',
         'update_beacon_with_signed_data',
         'update_dapi_with_beacons',
         'update_dapi_with_signed_data',
         'get_data_point',
         'set_name',
+        'set_indefinite_whitelist_status',
+        'set_whitelist_expiration',
       ],
       sender: adminAccount
     });
@@ -257,7 +266,7 @@ describe('Token', function () {
 
     // it('senderNotNameSetter', async function () {
     //   const roles = await contract.roles();
-    //   await client.renounceRole(
+    //   await client.revokeRole(
     //     roles[1],
     //     [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
     //   );
@@ -287,6 +296,48 @@ describe('Token', function () {
   describe('deriveBeaconSetId', function () {
     // it('derivesBeaconSetId', async function () {
     //   await derivesBeaconSetId(client, [[...generateRandomBytes32()], [...generateRandomBytes32()]]);
+    // });
+  });
+
+  describe('readerCanReadDataFeed', function () {
+    // it('readerZeroAddress', async function () {
+    //   await readerZeroAddress(client);
+    // });
+
+    // it('readerNotWhitelisted', async function () {
+    //   await readerNotWhitelisted(client, keyPair.getPublicKey().data);
+    // });
+
+    // it('readerWhitelisted', async function () {
+    //   await readerWhitelisted(client, generateRandomBytes32(), keyPair.getPublicKey().data);
+    // });
+
+    // it('readerUnlimitedReaderRole', async function () {
+    //   const roles = await contract.roles();
+    //   await readerUnlimitedReaderRole(client, keyPair.getPublicKey().data, roles[0]);
+    // });
+  });
+
+  describe('role', function () {
+    // it('revokeRole', async function () {
+    //   await revokeRole(client, [...generateRandomBytes32()]);
+    // });
+
+    it('renounceRole', async function () {
+      await renounceRole(client, [...generateRandomBytes32()], [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]);
+    });
+    // it('dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus', async function () {
+    //   await dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(client, [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]);
+    // });
+  });
+
+  describe('whitelist', function () {
+    // it('dataFeedIdToReaderToWhitelistStatus', async function () {
+    //   await dataFeedIdToReaderToWhitelistStatus(client);
+    // });
+
+    // it('dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus', async function () {
+    //   await dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(client, [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]);
     // });
   });
 
