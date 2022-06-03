@@ -4,7 +4,7 @@ use api3_common::abi::{Token, U256};
 use api3_common::{
     ensure, keccak_packed, AccessControlRegistry, AccessControlRegistryAdminnedWithManager,
     Bytes32, Error, Whitelist, WhitelistRoles, WhitelistRolesWithManager, WhitelistWithManager,
-    BYTES32_ZERO, Zero
+    Zero, BYTES32_ZERO,
 };
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
@@ -67,6 +67,34 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> NearWhitelist<'a, Acc
                 service_id_to_user_to_setter_to_indefinite_whitelist_status,
             ),
         }
+    }
+
+    pub fn data_feed_id_to_reader_to_setter_to_indefinite_whitelist_status(
+        &self,
+        data_feed_id: &Bytes32,
+        reader: &Bytes32,
+        setter: &Bytes32,
+    ) -> Option<bool> {
+        let key = Self::triple_hash(&data_feed_id, reader, setter);
+        let indefinite = match &self.service_id_to_user_to_setter_to_indefinite_whitelist_status {
+            ReadWrite::ReadOnly(m) => *m,
+            ReadWrite::Write(m) => *m,
+        };
+        indefinite.get(&key)
+    }
+
+    pub fn data_feed_id_to_whitelist_status(
+        &self,
+        data_feed_id: &Bytes32,
+        reader: &Bytes32,
+    ) -> Option<(u64, Bytes32)> {
+        let key = Self::double_hash(&data_feed_id, reader);
+        let s = match &self.service_id_to_user_to_whitelist_status {
+            ReadWrite::ReadOnly(s) => *s,
+            ReadWrite::Write(s) => *s,
+        };
+        s.get(&key)
+            .map(|w| (w.expiration_timestamp, w.indefinite_whitelist_count))
     }
 
     fn double_hash(service_id: &Bytes32, address: &[u8]) -> Bytes32 {
@@ -174,18 +202,14 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> Whitelist for NearWhi
         if status && !indefinite_status {
             indefinite.remove(&i_hash);
             indefinite.insert(&i_hash, &true);
-            let mut whitelist_status = whitelist
-                .remove(&w_hash)
-                .unwrap_or_default();
+            let mut whitelist_status = whitelist.remove(&w_hash).unwrap_or_default();
             indefinite_count = indefinite_count.add(U256::from(1u8));
             whitelist_status.indefinite_whitelist_count = Bytes32::from(&indefinite_count);
             whitelist.insert(&w_hash, &whitelist_status);
         } else if !status && indefinite_status {
             indefinite.remove(&i_hash);
             indefinite.insert(&i_hash, &false);
-            let mut whitelist_status = whitelist
-                .remove(&w_hash)
-                .unwrap_or_default();
+            let mut whitelist_status = whitelist.remove(&w_hash).unwrap_or_default();
             indefinite_count = indefinite_count.sub(U256::from(1u8));
             whitelist_status.indefinite_whitelist_count = Bytes32::from(&indefinite_count);
             whitelist.insert(&w_hash, &whitelist_status);
@@ -224,9 +248,7 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> Whitelist for NearWhi
             indefinite.remove(&setter_hash);
             indefinite.insert(&setter_hash, &false);
 
-            let mut whitelist_status = whitelist
-                .remove(&user_hash)
-                .unwrap_or_default();
+            let mut whitelist_status = whitelist.remove(&user_hash).unwrap_or_default();
             indefinite_count = indefinite_count.sub(U256::from(1u8));
             whitelist_status.indefinite_whitelist_count = Bytes32::from(&indefinite_count);
             whitelist.insert(&user_hash, &whitelist_status);
@@ -237,7 +259,9 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> Whitelist for NearWhi
     }
 }
 
-impl<'a, Access: AccessControlRegistry<Address = Address>> WhitelistRolesWithManager for NearWhitelist<'a, Access> {
+impl<'a, Access: AccessControlRegistry<Address = Address>> WhitelistRolesWithManager
+    for NearWhitelist<'a, Access>
+{
     fn has_whitelist_expiration_extender_role_or_is_manager(
         &self,
         account: &Self::Address,
@@ -251,19 +275,22 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> WhitelistRolesWithMan
     fn has_indefinite_whitelister_role_or_is_manager(&self, account: &Self::Address) -> bool {
         self.manager() == account
             || self
-            .access
-            .has_role(&self.indefinite_whitelister_role(), account)
+                .access
+                .has_role(&self.indefinite_whitelister_role(), account)
     }
 
     fn has_whitelist_expiration_setter_role_or_is_manager(&self, account: &Self::Address) -> bool {
         self.manager() == account
             || self
-            .access
-            .has_role(&self.whitelist_expiration_setter_role(), account)
+                .access
+                .has_role(&self.whitelist_expiration_setter_role(), account)
     }
 }
 
-impl<'a, Access: AccessControlRegistry<Address = Address>> WhitelistRoles for NearWhitelist<'a, Access> {}
+impl<'a, Access: AccessControlRegistry<Address = Address>> WhitelistRoles
+    for NearWhitelist<'a, Access>
+{
+}
 
 impl<'a, Access: AccessControlRegistry<Address = Address>> AccessControlRegistryAdminnedWithManager
     for NearWhitelist<'a, Access>
@@ -287,7 +314,9 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> AccessControlRegistry
     }
 }
 
-impl<'a, Access: AccessControlRegistry<Address = Address>> WhitelistWithManager for NearWhitelist<'a, Access> {
+impl<'a, Access: AccessControlRegistry<Address = Address>> WhitelistWithManager
+    for NearWhitelist<'a, Access>
+{
     fn extend_whitelist_expiration(
         &mut self,
         service_id: &Bytes32,

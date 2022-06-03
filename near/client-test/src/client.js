@@ -12,7 +12,11 @@ class DapiServer {
     }
 
     async grantRole(role, who) {
-        return await this.contract.grant_role({ role: [...role], who: [...who]});
+        return await this.contract.grant_role({ args: { role: [...role], who: [...who] } });
+    }
+
+    async revokeRole(role, who) {
+        return await this.contract.revoke_role( { args: { role: [...role], who: [...who]} });
     }
 
     async renounceRole(role, who) {
@@ -95,6 +99,58 @@ class DapiServer {
         return await this.contract.name_to_data_point_id(
             {
                 name: [...name]
+            }
+        );
+    }
+
+    async readerCanReadDataFeed(datapoint, reader) {
+        return await this.contract.reader_can_read_data_point(
+            {
+                data_point_id: [...datapoint],
+                reader
+            }
+        );
+    }
+
+    async setIndefiniteWhitelistStatus(serviceId, user, status) {
+        return await this.contract.set_indefinite_whitelist_status(
+            {
+                args: {
+                    service_id: [...serviceId],
+                    user: [...user],
+                    status
+                }
+            }
+        );
+    }
+
+    async setWhitelistExpiration(serviceId, user, expirationTimestamp) {
+        return await this.contract.set_whitelist_expiration(
+            {
+                args: {
+                    service_id: [...serviceId],
+                    user: [...user],
+                    expiration_timestamp: expirationTimestamp
+                }
+            }
+        );
+    }
+
+    async dataFeedIdToReaderToWhitelistStatus(dataFeedId, user) {
+        return await this.contract.data_feed_id_to_whitelist_status(
+            {
+                data_feed_id: [...dataFeedId],
+                reader: [...user]
+            }
+        );
+    }
+
+    async dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(dataFeedId, user, setter) {
+        return await this.contract.data_feed_id_to_reader_to_setter_to_indefinite_whitelist_status(
+            {
+                data_feed_id: [...dataFeedId],
+                reader: [...user],
+                setter: [...setter]
             }
         );
     }

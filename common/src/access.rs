@@ -71,10 +71,14 @@ pub trait AccessControlRegistry: AccessControlRegistryAdminnedWithManager {
     fn set_role_admin(&mut self, role: &Bytes32, role_admin: Bytes32) -> Result<(), Error>;
     /// Called by the account to renounce the role
     /// Override to disallow managers to renounce their root roles.
-    /// `role` and `account` are not validated because
     /// `role` Role to be renounced
     /// `account` Account to renounce the role
     fn renounce_role(&mut self, role: &Bytes32, account: &Self::Address) -> Result<(), Error>;
+    /// Called by the role admin to renounce the role
+    /// Override to disallow managers to renounce their root roles.
+    /// `role` Role to be renounced
+    /// `account` Account to renounce the role
+    fn revoke_role(&mut self, role: &Bytes32, account: &Self::Address) -> Result<(), Error>;
     /// Initializes the manager by initializing its root role and
     /// granting it to them
     /// Anyone can initialize a manager. An uninitialized manager

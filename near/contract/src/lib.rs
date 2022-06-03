@@ -9,7 +9,10 @@ use crate::utils::{
 };
 use crate::whitelist::{NearWhitelist, WhitelistStatus};
 use api3_common::abi::{Token, Uint};
-use api3_common::{keccak_packed, process_beacon_update, AccessControlRegistry, Bytes, Bytes32, Error, SignatureManger, StaticRole, Whitelist};
+use api3_common::{
+    keccak_packed, process_beacon_update, AccessControlRegistry, Bytes, Bytes32, Error,
+    SignatureManger, StaticRole, Whitelist,
+};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{collections::LookupMap, near_bindgen};
 
@@ -95,7 +98,7 @@ impl DapiServer {
         )
     }
 
-    /// Revoke `role` to `who`
+    /// Renounce `role` to `who`
     pub fn renounce_role(&mut self, role: Bytes32, who: Bytes32) {
         let mut access = NearAccessControlRegistry::requires_write(
             self.manager.clone(),
@@ -103,18 +106,28 @@ impl DapiServer {
             &mut self.role_membership,
             &mut self.role_admin,
         );
+        access.renounce_role(&role, &Address(who)).unwrap();
+    }
+
+    /// Revoke `role` to `who`
+    pub fn revoke_role(&mut self, role: Bytes32, who: Bytes32) {
+        let mut access = NearAccessControlRegistry::requires_write(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &mut self.role_membership,
+            &mut self.role_admin,
+        );
+
+        let role_admin = access
+            .get_role_admin(&role)
+            .unwrap_or(NearAccessControlRegistry::DEFAULT_ADMIN_ROLE);
 
         ensure!(
-            access
-                .only_role(
-                    &NearAccessControlRegistry::DEFAULT_ADMIN_ROLE,
-                    &msg_sender()
-                )
-                .is_ok(),
+            access.only_role(&role_admin, &msg_sender()).is_ok(),
             Error::NotAuthorized
         );
 
-        access.renounce_role(&role, &Address(who)).unwrap();
+        access.revoke_role(&role, &Address(who)).unwrap();
     }
 
     /// Grants `role` to `who`
@@ -303,7 +316,7 @@ impl DapiServer {
         let whitelist = NearWhitelist::read_only(
             &access,
             &self.service_id_to_user_to_whitelist_status,
-            &self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+            &self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
         );
 
         near_sdk::env::log(format!("msg_sender: {:?}", msg_sender().0).as_bytes());
@@ -341,7 +354,7 @@ impl DapiServer {
         let whitelist = NearWhitelist::read_only(
             &access,
             &self.service_id_to_user_to_whitelist_status,
-            &self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+            &self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
         );
         api3_common::read_with_name(name, &msg_sender(), &dp_s, &nh_s, &access, &whitelist)
             .map(|(a, n)| {
@@ -368,10 +381,59 @@ impl DapiServer {
         let whitelist = NearWhitelist::read_only(
             &access,
             &self.service_id_to_user_to_whitelist_status,
-            &self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+            &self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
         );
         let reader = Address(reader);
         api3_common::reader_can_read_data_point(&data_point_id, &reader, &access, &whitelist)
+    }
+
+    pub fn data_feed_id_to_reader_to_setter_to_indefinite_whitelist_status(
+        &self,
+        data_feed_id: Bytes32,
+        reader: Bytes32,
+        setter: Bytes32,
+    ) -> bool {
+        let access = NearAccessControlRegistry::read_only(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &self.role_membership,
+            &self.role_admin,
+        );
+        let whitelist = NearWhitelist::read_only(
+            &access,
+            &self.service_id_to_user_to_whitelist_status,
+            &self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
+        );
+        whitelist.data_feed_id_to_reader_to_setter_to_indefinite_whitelist_status(
+            &data_feed_id,
+            &reader,
+            &setter,
+        ).unwrap_or(false)
+    }
+
+    /// Returns the detailed whitelist status of the reader for the data feed
+    ///
+    /// # Arguments
+    ///
+    /// * `data_feed_id` The data feed id
+    /// * `reader` Reader address
+    pub fn data_feed_id_to_whitelist_status(
+        &self,
+        data_feed_id: Bytes32,
+        reader: Bytes32,
+    ) -> Option<(u64, Bytes32)> {
+        let access = NearAccessControlRegistry::read_only(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &self.role_membership,
+            &self.role_admin,
+        );
+        let whitelist = NearWhitelist::read_only(
+            &access,
+            &self.service_id_to_user_to_whitelist_status,
+            &self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
+        );
+        whitelist.data_feed_id_to_whitelist_status(&data_feed_id, &reader)
     }
 
     /// Extends the expiration of the temporary whitelist of `user` to
@@ -398,13 +460,9 @@ impl DapiServer {
         let mut whitelist = NearWhitelist::requires_write(
             &access,
             &mut self.service_id_to_user_to_whitelist_status,
-            &mut self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+            &mut self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
         );
-        whitelist.extend_whitelist_expiration(
-            &service_id,
-            &Address(user),
-            expiration_timestamp
-        )
+        whitelist.extend_whitelist_expiration(&service_id, &Address(user), expiration_timestamp)
     }
 
     /// Sets the expiration of the temporary whitelist of `user` to be
@@ -431,13 +489,9 @@ impl DapiServer {
         let mut whitelist = NearWhitelist::requires_write(
             &access,
             &mut self.service_id_to_user_to_whitelist_status,
-            &mut self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+            &mut self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
         );
-        whitelist.set_whitelist_expiration(
-            &service_id,
-            &Address(user),
-            expiration_timestamp
-        )
+        whitelist.set_whitelist_expiration(&service_id, &Address(user), expiration_timestamp)
     }
 
     /// Sets the indefinite whitelist status of `user` to be able to
@@ -463,13 +517,9 @@ impl DapiServer {
         let mut whitelist = NearWhitelist::requires_write(
             &access,
             &mut self.service_id_to_user_to_whitelist_status,
-            &mut self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+            &mut self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
         );
-        let r = whitelist.set_indefinite_whitelist_status(
-            &service_id,
-            &Address(user),
-            status
-        );
+        let r = whitelist.set_indefinite_whitelist_status(&service_id, &Address(user), status);
         Bytes32::from(r)
     }
 
@@ -496,7 +546,7 @@ impl DapiServer {
         let mut whitelist = NearWhitelist::requires_write(
             &access,
             &mut self.service_id_to_user_to_whitelist_status,
-            &mut self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+            &mut self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
         );
         let (revoked, r) = whitelist.revoke_indefinite_whitelist_status(
             &service_id,
