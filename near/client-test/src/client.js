@@ -49,6 +49,20 @@ class DapiServer {
         );
     }
 
+    async updateBeaconSetWithSignedData(airnodes, templateIds, timestamps, data, signatures) {
+        await this.contract.update_dapi_with_signed_data(
+            {
+                args: {
+                    airnodes: airnodes.map(r => [...r]),
+                    template_ids: templateIds.map(t => [...t]),
+                    timestamps: timestamps.map(r => [...bufferU64BE(r)]),
+                    data,
+                    signatures
+                }
+            }
+        );
+    }
+
     async setDapiName(name, datapointId) {
         await this.contract.set_name(
             {
