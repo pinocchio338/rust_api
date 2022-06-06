@@ -1,9 +1,11 @@
 const { 
   currentTimestamp, encodeAndSignData, encodeData, toBuffer, deriveBeaconId,
-  prepareMessage
+  prepareMessage,
+  ensure,
+  array_equals
  } = require("../util");
 
-async function updateBeacon(client, signer, airnodeAddress, templateId, value, timestamp) {
+async function updateBeacon(client, signer, airnodeAddress, templateId, value, timestamp, readerClient) {
     const [data, signature] = await encodeAndSignData(value, templateId, timestamp, signer);
     await client.updateBeaconWithSignedData(airnodeAddress, templateId, timestamp, data, signature);
 
@@ -11,9 +13,11 @@ async function updateBeacon(client, signer, airnodeAddress, templateId, value, t
       toBuffer(airnodeAddress),
       templateId
     );
-    // const beacon = await client.readDataFeedWithId(beaconId);
-    // expect(beacon.value).to.equal([...encodeData(123)]);
-    // expect(beacon.timestamp).to.equal(timestamp);
+    const beacon = await readerClient.readDataFeedWithId(beaconId);
+    ensure(
+      array_equals(beacon.value, [...encodeData(value)])
+    );
+    ensure(beacon.timestamp === timestamp);
 }
 
 async function dataNotFresherThanBeacon(client, signer, airnodeAddress, templateId) {

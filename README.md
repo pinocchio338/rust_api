@@ -51,11 +51,16 @@ You need to create 3 accounts for testing:
 ```
 CONTRACT_ACCOUNT: the account for the dapiServer contract.
 ADMIN_ACCOUNT: the default admin of the contract.
-USER_ACCOUNT: a normal user account.
-CROSS_CONTRACT_ACCOUNT: cross contract account for testing access control.
+USER_ACCOUNT: test util account, mainly for reading data points with unlimited access for data verification.
 ```
 Now go to near testnet and create the above accounts, you can choose your own names. Remember to define the above env variables with the account 
-names, i.e. if your contract account is `api3-contract.testnet`, then use `export CONTRACT_ACCOUNT=api3-contract.testnet`.
+names, i.e. if your contract account is `api3-contract.testnet`, then use:
+```
+export CONTRACT_ACCOUNT=test-api3.testnet
+export ADMIN_ACCOUNT=mocha-test.testnet
+export USER_ACCOUNT=user-test.testnet
+```
+
 
 ### Login on CLI
 Once the acconts are created, you need to login from CLI:
@@ -63,17 +68,12 @@ Once the acconts are created, you need to login from CLI:
 near login --account-id ${CONTRACT_ACCOUNT}
 near login --account-id ${ADMIN_ACCOUNT}
 near login --account-id ${USER_ACCOUNT}
-near login --account-id ${CROSS_CONTRACT_ACCOUNT}
 ```
 
 ### Deploy the contracts
 In the root folder, deploy the `api3-contract` using:
 ```
 near deploy --wasmFile ./target/wasm32-unknown-unknown/release/dapi_server.wasm --contractName=${CONTRACT_ACCOUNT} --keyPath=/home/dev/.near-credentials/testnet/${CONTRACT_ACCOUNT}.json
-```
-In the root folder, deploy the `cross-contract` using:
-```
-near deploy --wasmFile ./target/wasm32-unknown-unknown/release/cross_contract_call.wasm --contractName=${CROSS_CONTRACT_ACCOUNT} --keyPath=/home/dev/.near-credentials/testnet/${CROSS_CONTRACT_ACCOUNT}.json
 ```
 
 ### Run tests

@@ -23,6 +23,14 @@ class DapiServer {
         return await this.contract.renounce_role( { args: { role: [...role], who: [...who]} });
     }
 
+    async readDataFeedWithId(dataPointId) {
+        const data = await this.contract.read_with_data_point_id( { data_point_id: [...dataPointId] });
+        return {
+            value: data[0],
+            timestamp: data[1]
+        };
+    }
+
     async updateBeaconWithSignedData(airnodeAddress, templateId, timestamp, data, signature) {
         const pubKeyBuf = toBuffer(airnodeAddress);
         const bufferedTimestamp = bufferU64BE(timestamp);

@@ -6,7 +6,9 @@ near_sdk::setup_alloc!();
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, Default)]
-pub struct CrossContractCallDemo {}
+pub struct CrossContractCallDemo {
+    target: &str
+}
 
 #[near_bindgen]
 impl CrossContractCallDemo {

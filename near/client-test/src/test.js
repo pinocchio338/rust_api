@@ -13,7 +13,7 @@ const {
 const {
   derivesBeaconId, templateIdZero, airnodeZero, derivesBeaconSetId,
 } = require("./tests/derive");
-const { generateRandomBytes32, bufferU64BE, toBuffer, currentTimestamp, deriveBeaconId, deriveDApiId } = require("./util");
+const { generateRandomBytes32, bufferU64BE, toBuffer, currentTimestamp, deriveBeaconId, deriveDApiId, delay } = require("./util");
 const fs = require("fs");
 const ethers = require("ethers");
 const nearAPI = require("near-api-js");
@@ -69,7 +69,10 @@ describe('Token', function () {
   const templateId3 = 3;
   const data3 = 123;
 
+  // This is the actual dapi client
   let client;
+  // This is just a test util contract with propoer reading access, for data checking purposes
+  let userClient;
 
   let keyPair;
   beforeAll(async function () {
@@ -77,7 +80,7 @@ describe('Token', function () {
     contract = await near.loadContract(contractAccount, {
       viewMethods: [
         'has_role',
-        'read_with_data_point_id',
+        // 'read_with_data_point_id',
         'roles',
         'name_to_data_point_id',
         'derive_beacon_id',
@@ -87,6 +90,7 @@ describe('Token', function () {
         'data_feed_id_to_reader_to_setter_to_indefinite_whitelist_status',
       ],
       changeMethods: [
+        'read_with_data_point_id',
         'initialize',
         'grant_role',
         'renounce_role',
@@ -102,6 +106,23 @@ describe('Token', function () {
       sender: adminAccount
     });
     client = new DapiServer(contract);
+
+    userContract = await near.loadContract(contractAccount, {
+      viewMethods: [
+        'roles',
+        'name_to_data_point_id',
+        'derive_beacon_id',
+        'derive_beacon_set_id',
+        'reader_can_read_data_point',
+        'data_feed_id_to_whitelist_status',
+        'data_feed_id_to_reader_to_setter_to_indefinite_whitelist_status',
+      ],
+      changeMethods: [
+        'read_with_data_point_id',
+      ],
+      sender: userAccount
+    });
+    userClient = new DapiServer(userContract);
 
     crossContract = await near.loadContract(crossContractAccount, {
       viewMethods: ['hello_world', 'my_callback'],
@@ -128,59 +149,20 @@ describe('Token', function () {
           args: { }
         }
       );
+      // just wait a bit for the effects to take place
+      await delay(1000);
+
+      const reader = [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)];
+      const unlimitedReaderRole = (await contract.roles())[0];
+      await client.grantRole([...unlimitedReaderRole], reader);
     }
   });
 
-  describe('Access', function () {
-    // it('has role', async function () {
-    //   const newKey = KeyPair.fromRandom("ed25519");
-    //   const newPubKey = toBuffer(newKey.getPublicKey().data);
-    //   const r = await contract.has_role(
-    //     {
-    //       role: [...bufferU64BE(0)],
-    //       who: [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
-    //     }
-    //   );
-    //   console.log("what's r", r);
-    //   expect(r).toEqual(false);
-
-    //   expect(
-    //     await contract.has_role(
-    //       {
-    //         role: [...bufferU64BE(0)],
-    //         who: [...newPubKey]
-    //       }
-    //     )
-    //   ).toEqual(false);
-    // });
-
-  
-    // it('renounce role', async function () {
-    //   const roles = await contract.roles();
-    //   const readerRole = roles[0];
-
-    //   console.log("reader role", readerRole);
-    //   const who = [...Buffer.concat([Buffer.from(crossContractAccount, 'ascii')], 32)]
-      
-    //   expect(await contract.has_role({role: readerRole, who})).toEqual(true);
-
-    //   await contract.renounce_role({
-    //     args: {
-    //       role: readerRole,
-    //       who
-    //     }
-    //   });
-
-    //   expect(await contract.has_role({role: readerRole, who})).toEqual(false);
-    // });
-
-  });
-
   describe('updateBeaconWithSignedData', function () {
-    // it('updateBeacon', async function () {
-    //   const timestamp = currentTimestamp() + 1;
-    //   await updateBeacon(client, keyPair, keyPair.getPublicKey().data, templateId, 123, timestamp);
-    // });
+    it('updateBeacon', async function () {
+      const timestamp = currentTimestamp() + 1;
+      await updateBeacon(client, keyPair, keyPair.getPublicKey().data, templateId, 123, timestamp, userClient);
+    });
 
     // it('dataNotFresherThanBeacon', async function () {
     //   await dataNotFresherThanBeacon(client, keyPair, keyPair.getPublicKey().data, templateId);
@@ -324,11 +306,8 @@ describe('Token', function () {
     //   await revokeRole(client, [...generateRandomBytes32()]);
     // });
 
-    it('renounceRole', async function () {
-      await renounceRole(client, [...generateRandomBytes32()], [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]);
-    });
-    // it('dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus', async function () {
-    //   await dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(client, [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]);
+    // it('renounceRole', async function () {
+    //   await renounceRole(client, [...generateRandomBytes32()], [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]);
     // });
   });
 
