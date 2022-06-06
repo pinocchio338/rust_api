@@ -30,11 +30,12 @@ const CREDENTIALS_DIR = ".near-credentials";
 const credentialsPath = path.join(homedir, CREDENTIALS_DIR);
 const keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsPath);
 
-// DEFINE THESE
-const adminAccount = "mocha-test.testnet";
-const userAccount = "user-test.testnet";
-const contractAccount = "test-api3.testnet";
-const crossContractAccount = "cross-call.testnet";
+const contractAccount = process.env.CONTRACT_ACCOUNT;
+const adminAccount = process.env.ADMIN_ACCOUNT;
+const userAccount = process.env.USER_ACCOUNT;
+const crossContractAccount = process.env.CROSS_CONTRACT_ACCOUNT;
+// If you are running the first time, ensure this is false
+// else make this true
 const isInitialized = true;
 
 const config = {
