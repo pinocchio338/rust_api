@@ -319,7 +319,6 @@ impl DapiServer {
             &self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
         );
 
-        near_sdk::env::log(format!("msg_sender: {:?}", msg_sender().0).as_bytes());
         api3_common::read_with_data_point_id(
             &data_point_id,
             &msg_sender(),
