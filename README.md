@@ -53,7 +53,7 @@ ADMIN_ACCOUNT: the default admin of the contract.
 USER_ACCOUNT: test util account, mainly for reading data points with unlimited access for data verification.
 ```
 Now go to near testnet and create the above accounts, you can choose your own names. Remember to define the above env variables with the account 
-names, i.e. if your contract account is `api3-contract.testnet`, then use:
+names, i.e. for our dev env, it's:
 ```
 export CONTRACT_ACCOUNT=test-dapi.testnet
 export ADMIN_ACCOUNT=mocha-test.testnet
@@ -80,7 +80,7 @@ The tests are located in `near/client-test`, the `main` for tests is `near/clien
 Locate the DEFINITION of `isInitialized`, it tells the program whether to initialize the contract. If you are running the first time, 
 ensure this is `false`, else you can mark this as `true`.
 Most of the tests are commented off by default, if you want to test specific parts, uncomment the section.
-To run the test: `yarn jest`
+To run the test: `cd near/client-test && yarn jest`
 
 ### Clean up
 To clean up, just delete the accounts using `near delete ... ...`. See `https://docs.near.org/docs/tools/near-cli#near-delete`.
