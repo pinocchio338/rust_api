@@ -43,8 +43,7 @@ Once in the docker, you can follow the subsection accordingly.
 ### Compile
 - go to the near contract folder: `cd near/contract`
 - compile: `cargo build --target wasm32-unknown-unknown --release`
-- go to the near cross contract call folder: `cd near/cross-contract-call-demo`
-- compile: `cargo build --target wasm32-unknown-unknown --release`
+Once done you should be able to see, relative to the repo root folder, `target/wasm32-unknown-unknown/release/dapi_server.wasm`.
 
 ### Create test accounts
 You need to create 3 accounts for testing:
@@ -56,7 +55,7 @@ USER_ACCOUNT: test util account, mainly for reading data points with unlimited a
 Now go to near testnet and create the above accounts, you can choose your own names. Remember to define the above env variables with the account 
 names, i.e. if your contract account is `api3-contract.testnet`, then use:
 ```
-export CONTRACT_ACCOUNT=test-api3.testnet
+export CONTRACT_ACCOUNT=test-dapi.testnet
 export ADMIN_ACCOUNT=mocha-test.testnet
 export USER_ACCOUNT=user-test.testnet
 ```

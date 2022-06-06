@@ -36,7 +36,7 @@ const userAccount = process.env.USER_ACCOUNT;
 const crossContractAccount = process.env.CROSS_CONTRACT_ACCOUNT;
 // If you are running the first time, ensure this is false
 // else make this true
-const isInitialized = true;
+const isInitialized = false;
 
 const config = {
   keyStore,
@@ -149,12 +149,14 @@ describe('Token', function () {
           args: { }
         }
       );
+      console.log("initialized contract");
       // just wait a bit for the effects to take place
       await delay(1000);
 
       const reader = [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)];
       const unlimitedReaderRole = (await contract.roles())[0];
       await client.grantRole([...unlimitedReaderRole], reader);
+      await delay(1000);
     }
   });
 
