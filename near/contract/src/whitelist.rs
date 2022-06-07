@@ -147,7 +147,7 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> Whitelist for NearWhi
 
         let hash = Self::double_hash(service_id, &user.0);
 
-        let mut whitelist_status = (*m).remove(&hash).expect("must contain this service");
+        let mut whitelist_status = (*m).remove(&hash).unwrap_or_default();
         ensure!(
             expiration_timestamp > whitelist_status.expiration_timestamp,
             Error::DoesNotExtendExpiration
@@ -169,7 +169,7 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> Whitelist for NearWhi
             ReadWrite::Write(m) => m,
         };
         let hash = Self::double_hash(service_id, &user.0);
-        let mut whitelist_status = (*m).remove(&hash).expect("must contain this service");
+        let mut whitelist_status = (*m).remove(&hash).unwrap_or_default();
         whitelist_status.expiration_timestamp = expiration_timestamp;
         (*m).insert(&hash, &whitelist_status);
     }
@@ -324,8 +324,8 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> WhitelistWithManager
         expiration_timestamp: u64,
     ) {
         ensure!(
-            self.has_whitelist_expiration_setter_role_or_is_manager(&msg_sender()),
-            Error::DoesNotExtendExpiration
+            self.has_whitelist_expiration_extender_role_or_is_manager(&msg_sender()),
+            Error::AccessDenied
         )
         .unwrap();
         ensure!(*service_id != [0; 32], Error::ServiceIdZero).unwrap();
@@ -341,12 +341,12 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> WhitelistWithManager
     ) {
         ensure!(
             self.has_whitelist_expiration_setter_role_or_is_manager(&msg_sender()),
-            Error::DoesNotExtendExpiration
+            Error::AccessDenied
         )
         .unwrap();
 
         ensure!(!service_id.is_zero(), Error::ServiceIdZero).unwrap();
-        ensure!(!user.0.is_zero(), Error::UserAddressZero).unwrap();
+        ensure!(!user.is_zero(), Error::UserAddressZero).unwrap();
 
         Whitelist::set_whitelist_expiration(self, service_id, user, expiration_timestamp)
     }
@@ -359,12 +359,12 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> WhitelistWithManager
     ) -> U256 {
         ensure!(
             self.has_indefinite_whitelister_role_or_is_manager(&msg_sender()),
-            Error::CannotSetIndefiniteStatus
+            Error::AccessDenied
         )
         .unwrap();
 
         ensure!(!service_id.is_zero(), Error::ServiceIdZero).unwrap();
-        ensure!(!user.0.is_zero(), Error::UserAddressZero).unwrap();
+        ensure!(!user.is_zero(), Error::UserAddressZero).unwrap();
 
         Whitelist::set_indefinite_whitelist_status(self, service_id, user, status)
     }
@@ -377,7 +377,7 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> WhitelistWithManager
     ) -> (bool, U256) {
         ensure!(
             self.has_indefinite_whitelister_role_or_is_manager(setter),
-            Error::CannotSetIndefiniteStatus
+            Error::AccessDenied
         )
         .unwrap();
         Whitelist::revoke_indefinite_whitelist_status(self, service_id, user, setter)
