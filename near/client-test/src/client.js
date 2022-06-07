@@ -120,6 +120,18 @@ class DapiServer {
         );
     }
 
+    async whitelistExpirationSetterRole() {
+        return await this.contract.whitelist_expiration_setter_role({});
+    }
+
+    async whitelistExpirationExtenderRole() {
+        return await this.contract.whitelist_expiration_extender_role({});
+    }
+
+    async indefiniteWhitelisterRole() {
+        return await this.contract.indefinite_whitelister_role({});
+    }
+
     async setIndefiniteWhitelistStatus(serviceId, user, status) {
         return await this.contract.set_indefinite_whitelist_status(
             {
@@ -134,6 +146,18 @@ class DapiServer {
 
     async setWhitelistExpiration(serviceId, user, expirationTimestamp) {
         return await this.contract.set_whitelist_expiration(
+            {
+                args: {
+                    service_id: [...serviceId],
+                    user: [...user],
+                    expiration_timestamp: expirationTimestamp
+                }
+            }
+        );
+    }
+
+    async extendWhitelistExpiration(serviceId, user, expirationTimestamp) {
+        return await this.contract.extend_whitelist_expiration(
             {
                 args: {
                     service_id: [...serviceId],

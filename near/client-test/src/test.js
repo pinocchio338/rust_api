@@ -25,6 +25,9 @@ const { updatesBeaconSetWithSignedData, updatedSetValueOutdated, lengthNotCorrec
 const { readerZeroAddress, readerNotWhitelisted, readerWhitelisted, readerUnlimitedReaderRole } = require("./tests/readerCanReadDataFeed");
 const { dataFeedIdToReaderToWhitelistStatus, dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus } = require("./tests/whitelist");
 const { revokeRole, renounceRole } = require("./tests/role");
+const { WithExtenderRole } = require("./tests/extendWhitelistExpiration");
+const { WithSetterRole } = require("./tests/setWhitelistExpiration");
+const { WithIndefiniteWhitelisterSetterRole } = require("./tests/setIndefiniteWhitelistStatus");
 const homedir = require("os").homedir();
 const CREDENTIALS_DIR = ".near-credentials";
 const credentialsPath = path.join(homedir, CREDENTIALS_DIR);
@@ -36,7 +39,7 @@ const userAccount = process.env.USER_ACCOUNT;
 const crossContractAccount = process.env.CROSS_CONTRACT_ACCOUNT;
 // If you are running the first time, ensure this is false
 // else make this true
-const isInitialized = false;
+const isInitialized = true;
 
 const config = {
   keyStore,
@@ -88,6 +91,9 @@ describe('Token', function () {
         'reader_can_read_data_point',
         'data_feed_id_to_whitelist_status',
         'data_feed_id_to_reader_to_setter_to_indefinite_whitelist_status',
+        'whitelist_expiration_setter_role',
+        'whitelist_expiration_extender_role',
+        'indefinite_whitelister_role'
       ],
       changeMethods: [
         'read_with_data_point_id',
@@ -102,6 +108,7 @@ describe('Token', function () {
         'set_name',
         'set_indefinite_whitelist_status',
         'set_whitelist_expiration',
+        'extend_whitelist_expiration',
       ],
       sender: adminAccount
     });
@@ -116,9 +123,15 @@ describe('Token', function () {
         'reader_can_read_data_point',
         'data_feed_id_to_whitelist_status',
         'data_feed_id_to_reader_to_setter_to_indefinite_whitelist_status',
+        'whitelist_expiration_setter_role',
+        'whitelist_expiration_extender_role',
+        'indefinite_whitelister_role'
       ],
       changeMethods: [
         'read_with_data_point_id',
+        'set_indefinite_whitelist_status',
+        'set_whitelist_expiration',
+        'extend_whitelist_expiration',
       ],
       sender: userAccount
     });
@@ -161,10 +174,10 @@ describe('Token', function () {
   });
 
   describe('updateBeaconWithSignedData', function () {
-    it('updateBeacon', async function () {
-      const timestamp = currentTimestamp() + 1;
-      await updateBeacon(client, keyPair, keyPair.getPublicKey().data, templateId, 123, timestamp, userClient);
-    });
+    // it('updateBeacon', async function () {
+    //   const timestamp = currentTimestamp() + 1;
+    //   await updateBeacon(client, keyPair, keyPair.getPublicKey().data, templateId, 123, timestamp, userClient);
+    // });
 
     // it('dataNotFresherThanBeacon', async function () {
     //   await dataNotFresherThanBeacon(client, keyPair, keyPair.getPublicKey().data, templateId);
@@ -323,21 +336,136 @@ describe('Token', function () {
     // });
   });
 
-  // describe('readWithDataPointId - cross contract call', function () {
-  //   it('works', async function () {
-  //     const pubKeyBuf = toBuffer(keyPair.getPublicKey().data);
-  //     const beaconId1 = deriveBeaconId(pubKeyBuf, templateId1);
-  //     const beaconId2 = deriveBeaconId(pubKeyBuf, templateId2);
-  //     const beaconId3 = deriveBeaconId(pubKeyBuf, templateId3);
-  //     const beaconIds = [beaconId1, beaconId2, beaconId3];
-  //     const dataPointId = deriveDApiId(beaconIds);
-  //     await crossContract.get_datapoint(
-  //       {
-  //         args: {
-  //           datapoint_id: [...dataPointId]
-  //         }
-  //       }
-  //     );
-  //   });
-  // });
+  describe('extendWhitelistExpiration', function () {
+    // describe('Sender has whitelist expiration extender role', function () {
+    //   beforeAll(async function () {
+    //     await WithExtenderRole.setup(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)], userClient);
+    //     console.log("setup done for extendWhitelistExpiration");
+    //   });
+
+    //   it('extendsWhitelistExpiration', async function () {
+    //     await WithExtenderRole.extendsWhitelistExpiration(userClient);
+    //   });
+
+    //   it('doesNotExtendExpiration', async function () {
+    //     await WithExtenderRole.doesNotExtendExpiration(userClient);
+    //   });
+
+    //   it('readerZeroAddress', async function () {
+    //     await WithExtenderRole.readerZeroAddress(userClient);
+    //   });
+
+    //   it('dataFeedIdZero', async function () {
+    //     await WithExtenderRole.dataFeedIdZero(userClient);
+    //   });
+
+    //   afterAll(async function () {
+    //     await WithExtenderRole.tearDown(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]);
+    //     console.log("tear down done for extendWhitelistExpiration");
+    //   });
+    // });
+
+    // describe('Sender is the manager', function () {
+    //   it('extendsWhitelistExpiration', async function () {
+    //     await WithExtenderRole.extendsWhitelistExpiration(client);
+    //   });
+
+    //   it('doesNotExtendExpiration', async function () {
+    //     await WithExtenderRole.doesNotExtendExpiration(client);
+    //   });
+
+    //   it('readerZeroAddress', async function () {
+    //     await WithExtenderRole.readerZeroAddress(client);
+    //   });
+
+    //   it('dataFeedIdZero', async function () {
+    //     await WithExtenderRole.dataFeedIdZero(client);
+    //   });
+    // });
+  });
+
+  describe('setWhitelistExpiration', function () {
+    describe('Sender has whitelist expiration setter role', function () {
+      // beforeAll(async function () {
+      //   await WithSetterRole.setup(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)], userClient);
+      //   console.log("setup done for setWhitelistExpiration");
+      // });
+
+      // it('setsWhitelistExpiration', async function () {
+      //   await WithSetterRole.setsWhitelistExpiration(userClient);
+      // });
+
+      // it('readerZeroAddress', async function () {
+      //   await WithSetterRole.readerZeroAddress(userClient);
+      // });
+
+      // it('dataFeedIdZero', async function () {
+      //   await WithSetterRole.dataFeedIdZero(userClient);
+      // });
+
+      // afterAll(async function () {
+      //   await WithSetterRole.tearDown(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]);
+      //   console.log("tear down done for extendWhitelistExpiration");
+      // });
+    });
+
+    describe('Sender is the manager', function () {
+      // it('setsWhitelistExpiration', async function () {
+      //   await WithSetterRole.setsWhitelistExpiration(client);
+      // });
+
+      // it('readerZeroAddress', async function () {
+      //   await WithSetterRole.readerZeroAddress(client);
+      // });
+
+      // it('dataFeedIdZero', async function () {
+      //   await WithSetterRole.dataFeedIdZero(client);
+      // });
+    });
+  });
+
+  describe('setIndefiniteWhitelistStatus', function () {
+    describe('Sender has whitelist expiration setter role', function () {
+      beforeAll(async function () {
+        await WithIndefiniteWhitelisterSetterRole.setup(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)], userClient);
+        console.log("setup done for setIndefiniteWhitelistStatus");
+      });
+
+      it('setIndefiniteWhitelistStatus', async function () {
+        await WithIndefiniteWhitelisterSetterRole.setIndefiniteWhitelistStatus(
+          userClient,
+          [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]
+        );
+      });
+
+      it('readerZeroAddress', async function () {
+        await WithIndefiniteWhitelisterSetterRole.readerZeroAddress(userClient);
+      });
+
+      it('dataFeedIdZero', async function () {
+        await WithIndefiniteWhitelisterSetterRole.dataFeedIdZero(userClient);
+      });
+
+      afterAll(async function () {
+        await WithIndefiniteWhitelisterSetterRole.tearDown(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]);
+        console.log("tear down done for extendWhitelistExpiration");
+      });
+    });
+
+    describe('Sender is the manager', function () {
+      it('setIndefiniteWhitelistStatus', async function () {
+        await WithIndefiniteWhitelisterSetterRole.setIndefiniteWhitelistStatus(
+          client, [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
+        );
+      });
+
+      it('readerZeroAddress', async function () {
+        await WithIndefiniteWhitelisterSetterRole.readerZeroAddress(client);
+      });
+
+      it('dataFeedIdZero', async function () {
+        await WithIndefiniteWhitelisterSetterRole.dataFeedIdZero(client);
+      });
+    });
+  });
 });

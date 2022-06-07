@@ -11,7 +11,7 @@ use crate::whitelist::{NearWhitelist, WhitelistStatus};
 use api3_common::abi::{Token, Uint};
 use api3_common::{
     keccak_packed, process_beacon_update, AccessControlRegistry, Bytes, Bytes32, Error,
-    SignatureManger, StaticRole, Whitelist,
+    SignatureManger, StaticRole, WhitelistRolesWithManager, WhitelistWithManager,
 };
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{collections::LookupMap, near_bindgen};
@@ -403,11 +403,13 @@ impl DapiServer {
             &self.service_id_to_user_to_whitelist_status,
             &self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
         );
-        whitelist.data_feed_id_to_reader_to_setter_to_indefinite_whitelist_status(
-            &data_feed_id,
-            &reader,
-            &setter,
-        ).unwrap_or(false)
+        whitelist
+            .data_feed_id_to_reader_to_setter_to_indefinite_whitelist_status(
+                &data_feed_id,
+                &reader,
+                &setter,
+            )
+            .unwrap_or(false)
     }
 
     /// Returns the detailed whitelist status of the reader for the data feed
@@ -553,6 +555,51 @@ impl DapiServer {
             &Address(setter),
         );
         (revoked, Bytes32::from(r))
+    }
+
+    pub fn whitelist_expiration_extender_role(&self) -> Bytes32 {
+        let access = NearAccessControlRegistry::read_only(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &self.role_membership,
+            &self.role_admin,
+        );
+        let whitelist = NearWhitelist::read_only(
+            &access,
+            &self.service_id_to_user_to_whitelist_status,
+            &self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
+        );
+        whitelist.whitelist_expiration_extender_role()
+    }
+
+    pub fn whitelist_expiration_setter_role(&self) -> Bytes32 {
+        let access = NearAccessControlRegistry::read_only(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &self.role_membership,
+            &self.role_admin,
+        );
+        let whitelist = NearWhitelist::read_only(
+            &access,
+            &self.service_id_to_user_to_whitelist_status,
+            &self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
+        );
+        whitelist.whitelist_expiration_setter_role()
+    }
+
+    pub fn indefinite_whitelister_role(&self) -> Bytes32 {
+        let access = NearAccessControlRegistry::read_only(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &self.role_membership,
+            &self.role_admin,
+        );
+        let whitelist = NearWhitelist::read_only(
+            &access,
+            &self.service_id_to_user_to_whitelist_status,
+            &self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
+        );
+        whitelist.indefinite_whitelister_role()
     }
 }
 
