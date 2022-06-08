@@ -376,8 +376,8 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> WhitelistWithManager
         setter: &<Self as Whitelist>::Address,
     ) -> (bool, U256) {
         ensure!(
-            self.has_indefinite_whitelister_role_or_is_manager(setter),
-            Error::AccessDenied
+            !self.has_indefinite_whitelister_role_or_is_manager(setter),
+            Error::SetterCanSetIndefiniteStatus
         )
         .unwrap();
         Whitelist::revoke_indefinite_whitelist_status(self, service_id, user, setter)

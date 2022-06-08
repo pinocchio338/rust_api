@@ -31,6 +31,14 @@ class DapiServer {
         };
     }
 
+    async readDataFeedWithDapiName(name) {
+        const data = await this.contract.read_with_name( { name: [...name] });
+        return {
+            value: data[0],
+            timestamp: data[1]
+        };
+    }
+
     async updateBeaconWithSignedData(airnodeAddress, templateId, timestamp, data, signature) {
         const pubKeyBuf = toBuffer(airnodeAddress);
         const bufferedTimestamp = bufferU64BE(timestamp);
@@ -151,6 +159,18 @@ class DapiServer {
                     service_id: [...serviceId],
                     user: [...user],
                     expiration_timestamp: expirationTimestamp
+                }
+            }
+        );
+    }
+
+    async revokeIndefiniteWhitelistStatus(serviceId, user, setter) {
+        return await this.contract.revoke_indefinite_whitelist_status(
+            {
+                args: {
+                    service_id: [...serviceId],
+                    user: [...user],
+                    setter: [...setter]
                 }
             }
         );
