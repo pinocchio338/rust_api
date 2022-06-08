@@ -57,7 +57,16 @@ function toBuffer(ab) {
 }
 
 function generateRandomBytes32() {
-    return ethers.utils.randomBytes(32);
+    while (true) {
+        const r = ethers.utils.randomBytes(32);
+
+        let zeroCount = 0;
+        for (const i of r) {
+            if (i === 0) { zeroCount++; }
+        }
+
+        if (zeroCount !== 32) { return r; }
+    }
 }
 
 function deriveDApiId(beaconIds) {

@@ -55,7 +55,9 @@ pub enum Error {
     #[error("Template id cannot be zero")]
     TempalteIdZero,
     #[error("Airnode id cannot be zero")]
-    AirnodeIdZero
+    AirnodeIdZero,
+    #[error("Setter can set indefinite status")]
+    SetterCanSetIndefiniteStatus
 }
 
 impl From<Error> for u32 {
@@ -87,6 +89,7 @@ impl From<Error> for u32 {
             Error::CannotSetIndefiniteStatus => 25,
             Error::TempalteIdZero => 26,
             Error::AirnodeIdZero => 27,
+            Error::SetterCanSetIndefiniteStatus => 28,
         }
     }
 }
