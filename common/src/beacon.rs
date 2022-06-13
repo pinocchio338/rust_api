@@ -317,7 +317,7 @@ pub fn set_name<D: Storage<Bytes32>, A: AccessControlRegistry>(
 /// * `template_id` Template ID
 pub fn derive_beacon_id(airnode: Bytes, template_id: Bytes32) -> Bytes32 {
     ensure!(not_zero(&airnode), Error::AirnodeIdZero).unwrap();
-    ensure!(not_zero(&template_id), Error::TempalteIdZero).unwrap();
+    ensure!(not_zero(&template_id), Error::TemplateIdZero).unwrap();
     let (encoded, _) = encode_packed(&[
         Token::Bytes(airnode),
         Token::FixedBytes(template_id.to_vec()),
@@ -393,10 +393,11 @@ pub fn process_beacon_update<D: Storage<DataPoint>>(
 }
 
 fn not_zero(bytes: &[u8]) -> bool {
+    let mut count = 0;
     for i in bytes {
-        if *i == 0u8 { return false; }
+        if *i == 0u8 { count += 1; }
     }
-    true
+    count != bytes.len()
 }
 
 #[cfg(test)]

@@ -1,4 +1,4 @@
-const { ensure, generateRandomBytes32, currentTimestamp } = require("../util");
+const { ensure, generateRandomBytes32, currentTimestamp, delay } = require("../util");
 
 
 class WithIndefiniteWhitelisterSetterRole {
@@ -7,11 +7,13 @@ class WithIndefiniteWhitelisterSetterRole {
         ensure(!(await client.hasRole(indefiniteWhitelisterRole, userAccount)));
         await WithIndefiniteWhitelisterSetterRole.cannotSetIndefiniteWhitelistStatus(userClient);
         await client.grantRole(indefiniteWhitelisterRole, userAccount);
+        await delay(3000);
     }
 
     static async tearDown(client, userAccount) {
         const indefiniteWhitelisterRole = await client.indefiniteWhitelisterRole();
         await client.revokeRole(indefiniteWhitelisterRole, userAccount);
+        await delay(3000);
     }
 
     static async setIndefiniteWhitelistStatus(client, listerAccount) {
@@ -52,6 +54,7 @@ class WithIndefiniteWhitelisterSetterRole {
             await client.setIndefiniteWhitelistStatus(beaconId, [...Buffer.alloc(32, 0)], true);
             ensure(false);
         } catch(e) {
+            console.log(e);
             ensure(e.toString().includes("UserAddressZero"));
         }
     }

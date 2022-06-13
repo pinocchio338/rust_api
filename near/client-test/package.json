@@ -5,19 +5,6 @@
   "license": "(MIT AND Apache-2.0)",
   "type":"module",
   "scripts": {
-    "build": "cd ../contract && cargo build --target wasm32-unknown-unknown --release && cd -",
-    "postbuild": "mkdir -p ./out && cp ../../target/wasm32-unknown-unknown/release/api3_contract.wasm ./out/main.wasm",
-    "deploy:contract": "near deploy",
-    "deploy:pages": "gh-pages -d src",
-    "deploy": "yarn build && yarn deploy:contract",
-    "deploy:dev": "yarn build && near dev-deploy",
-    "dev": "yarn deploy:dev && yarn start:dev",
-    "prestart": "yarn build && yarn deploy:contract",
-    "start": "parcel src/index.html",
-    "start:dev": "env-cmd -f ./neardev/dev-account.env parcel src/index.html",
-    "test:cargo": "cd ../contract && cargo test -- --nocapture",
-    "test": "yarn build && yarn test:cargo && jest",
-    "clean": "rm -rf node_modules src/pkg client/pkg out dist",
     "jest": "jest"
   },
   "devDependencies": {
