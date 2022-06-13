@@ -82,6 +82,9 @@ describe('Token', function () {
 
   let keyPair;
   beforeAll(async function () {
+    console.log("template id", templateId);
+    console.log("beaconSetTemplateIds", beaconSetTemplateIds);
+
     near = await nearAPI.connect(config);
     contract = await near.loadContract(contractAccount, {
       viewMethods: [
@@ -181,425 +184,443 @@ describe('Token', function () {
   });
 
   describe('updateBeaconWithSignedData', function () {
-    // it('updateBeacon', async function () {
-    //   const timestamp = currentTimestamp() + 1;
-    //   await updateBeacon(client, keyPair, keyPair.getPublicKey().data, templateId, 123, timestamp, userClient);
-    // });
+    let roles;
 
-    // it('dataNotFresherThanBeacon', async function () {
-    //   await dataNotFresherThanBeacon(client, keyPair, keyPair.getPublicKey().data, templateId);
-    // });
+    beforeAll(async () => {
+      roles = await contract.roles();
+      await client.grantRole(
+        roles[0],
+        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]
+      );
+      await delay(1000);
+    });
 
-    // it('dataLengthNotCorrect', async function () {
-    //   await dataLengthNotCorrect(client, keyPair, keyPair.getPublicKey().data, templateId);
-    // });
+    afterAll(async () => {
+      await client.revokeRole(
+        roles[0],
+        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]
+      );
+      await delay(1000);
+    })
 
-    // it('timestampNotValid', async function () {
-    //   await timestampNotValid(client, keyPair, keyPair.getPublicKey().data, templateId);
-    // });
+    it('updateBeacon', async function () {
+      const timestamp = currentTimestamp() + 1;
+      await updateBeacon(client, keyPair, keyPair.getPublicKey().data, templateId, 123, timestamp, userClient);
+    });
 
-    // it('signatureNotValid', async function () {
-    //   await signatureNotValid(client, keyPair, keyPair.getPublicKey().data, templateId);
-    // });
+    it('dataNotFresherThanBeacon', async function () {
+      await dataNotFresherThanBeacon(client, keyPair, keyPair.getPublicKey().data, templateId);
+    });
+
+    it('dataLengthNotCorrect', async function () {
+      await dataLengthNotCorrect(client, keyPair, keyPair.getPublicKey().data, templateId);
+    });
+
+    it('timestampNotValid', async function () {
+      await timestampNotValid(client, keyPair, keyPair.getPublicKey().data, templateId);
+    });
+
+    it('signatureNotValid', async function () {
+      await signatureNotValid(client, keyPair, keyPair.getPublicKey().data, templateId);
+    });
   });
 
   describe('updateBeaconSetWithBeacons', function () {
-    // it('updatesBeaconSet', async function () {
-    //   const beaconIds = [];
-    //   const beaconData = [123, 456, 789];
-    //   let timestamp = currentTimestamp();
-    //   for (let ind = 0; ind < beaconData.length; ind++) {
-    //     timestamp++;
-    //     // await updateBeacon(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds[ind], beaconData[ind], timestamp);
-    //     beaconIds.push([...deriveBeaconId(keyPair.getPublicKey().data, beaconSetTemplateIds[ind])]);
-    //   }
-    //   await updatesBeaconSet(client, beaconIds);
-    // });
+    it('updatesBeaconSet', async function () {
+      const beaconIds = [];
+      const beaconData = [123, 456, 789];
+      let timestamp = currentTimestamp();
+      for (let ind = 0; ind < beaconData.length; ind++) {
+        timestamp++;
+        // await updateBeacon(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds[ind], beaconData[ind], timestamp);
+        beaconIds.push([...deriveBeaconId(keyPair.getPublicKey().data, beaconSetTemplateIds[ind])]);
+      }
+      await updatesBeaconSet(client, beaconIds);
+    });
 
-    // it('lessThanTwoBeacons', async function () {
-    //   await lessThanTwoBeacons(client);
-    // });
-
+    it('lessThanTwoBeacons', async function () {
+      await lessThanTwoBeacons(client);
+    });
   });
 
   describe('updateBeaconSetWithSignedData', function () {
-    // it('updatesBeaconSetWithSignedData', async function () {
-    //   await updatesBeaconSetWithSignedData(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
-    // });
+    it('updatesBeaconSetWithSignedData', async function () {
+      await updatesBeaconSetWithSignedData(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
+    });
 
-    // it('updatedSetValueOutdated', async function () {
-    //   await updatedSetValueOutdated(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
-    // });
+    it('updatedSetValueOutdated', async function () {
+      await updatedSetValueOutdated(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
+    });
 
-    // it('dataValueExceedingRange', async function () {
-    //   // TODO: we are using U256 internally, not sure if this is still needed  
-    // });
+    it('dataValueExceedingRange', async function () {
+      // TODO: we are using U256 internally, not sure if this is still needed  
+    });
 
-    // it('lengthNotCorrect', async function () {
-    //   // TODO: debugging
-    //   // await lengthNotCorrect(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
-    // });
+    it('lengthNotCorrect', async function () {
+      // TODO: debugging
+      // await lengthNotCorrect(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
+    });
 
-    // it('notAllSignaturesValid', async function () {
-    //   await notAllSignaturesValid(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
-    // });
+    it('notAllSignaturesValid', async function () {
+      await notAllSignaturesValid(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
+    });
 
-    // it('notAllTimestampValid', async function () {
-    //   // TODO
-    //   await notAllTimestampValid(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
-    // });
+    it('notAllTimestampValid', async function () {
+      // TODO
+      await notAllTimestampValid(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
+    });
 
-    // it('lessThanTwoBeacons', async function () {
-    //   await lessThanTwoBeacons(client);
-    // });
+    it('lessThanTwoBeacons', async function () {
+      await lessThanTwoBeacons(client);
+    });
 
-    // it('parameterLengthMismatch', async function () {
-    //   await parameterLengthMismatch(client, keyPair.getPublicKey().data, beaconSetTemplateIds);
-    // });
+    it('parameterLengthMismatch', async function () {
+      await parameterLengthMismatch(client, keyPair.getPublicKey().data, beaconSetTemplateIds);
+    });
   });
   
   describe('setName', function () {
-    // it('setsDAPIName', async function () {
-    //   const roles = await contract.roles();
-    //   await client.grantRole(
-    //     roles[1],
-    //     [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
-    //   );
-    //   const dapiName = Buffer.from(ethers.utils.formatBytes32String('My dAPI').substring(2), "hex");
-    //   await setsDAPIName(client, dapiName, beaconSetId);
-    // });
+    it('setsDAPIName', async function () {
+      const roles = await contract.roles();
+      await client.grantRole(
+        roles[1],
+        [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
+      );
+      const dapiName = Buffer.from(ethers.utils.formatBytes32String('My dAPI').substring(2), "hex");
+      await setsDAPIName(client, dapiName, beaconSetId);
+    });
 
-    // it('senderNotNameSetter', async function () {
-    //   const roles = await contract.roles();
-    //   await client.revokeRole(
-    //     roles[1],
-    //     [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
-    //   );
-    //   const dapiName = Buffer.from(ethers.utils.formatBytes32String('My dAPI').substring(2), "hex");
-    //   await senderNotNameSetter(client, dapiName, beaconSetId);
-    // });
+    it('senderNotNameSetter', async function () {
+      const roles = await contract.roles();
+      await client.revokeRole(
+        roles[1],
+        [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
+      );
+      const dapiName = Buffer.from(ethers.utils.formatBytes32String('My dAPI').substring(2), "hex");
+      await senderNotNameSetter(client, dapiName, beaconSetId);
+    });
 
-    // it('dAPINameZero', async function () {
-    //   await dAPINameZero(client);
-    // });
+    it('dAPINameZero', async function () {
+      await dAPINameZero(client);
+    });
   });
 
   describe('deriveBeaconId', function () {
-    // it('derivesBeaconId', async function () {
-    //   await derivesBeaconId(client, keyPair.getPublicKey().data, templateId);
-    // });
+    it('derivesBeaconId', async function () {
+      await derivesBeaconId(client, keyPair.getPublicKey().data, templateId);
+    });
 
-    // it('templateIdZero', async function () {
-    //   await templateIdZero(client, keyPair.getPublicKey().data);
-    // });
+    it('templateIdZero', async function () {
+      await templateIdZero(client, keyPair.getPublicKey().data);
+    });
 
-    // it('airnodeZero', async function () {
-    //   await airnodeZero(client, templateId);
-    // });
+    it('airnodeZero', async function () {
+      await airnodeZero(client, templateId);
+    });
   });
 
   describe('deriveBeaconSetId', function () {
-    // it('derivesBeaconSetId', async function () {
-    //   await derivesBeaconSetId(client, [[...generateRandomBytes32()], [...generateRandomBytes32()]]);
-    // });
+    it('derivesBeaconSetId', async function () {
+      await derivesBeaconSetId(client, [[...generateRandomBytes32()], [...generateRandomBytes32()]]);
+    });
   });
 
   describe('readerCanReadDataFeed', function () {
-    // it('readerZeroAddress', async function () {
-    //   await readerZeroAddress(client);
-    // });
+    it('readerZeroAddress', async function () {
+      await readerZeroAddress(client);
+    });
 
-    // it('readerNotWhitelisted', async function () {
-    //   await readerNotWhitelisted(client, keyPair.getPublicKey().data);
-    // });
+    it('readerNotWhitelisted', async function () {
+      await readerNotWhitelisted(client, keyPair.getPublicKey().data);
+    });
 
-    // it('readerWhitelisted', async function () {
-    //   await readerWhitelisted(client, generateRandomBytes32(), keyPair.getPublicKey().data);
-    // });
+    it('readerWhitelisted', async function () {
+      await readerWhitelisted(client, generateRandomBytes32(), keyPair.getPublicKey().data);
+    });
 
-    // it('readerUnlimitedReaderRole', async function () {
-    //   const roles = await contract.roles();
-    //   await readerUnlimitedReaderRole(client, keyPair.getPublicKey().data, roles[0]);
-    // });
+    it('readerUnlimitedReaderRole', async function () {
+      const roles = await contract.roles();
+      await readerUnlimitedReaderRole(client, keyPair.getPublicKey().data, roles[0]);
+    });
   });
 
   describe('role', function () {
-    // it('revokeRole', async function () {
-    //   await revokeRole(client, [...generateRandomBytes32()]);
-    // });
+    it('revokeRole', async function () {
+      await revokeRole(client, [...generateRandomBytes32()]);
+    });
 
-    // it('renounceRole', async function () {
-    //   await renounceRole(client, [...generateRandomBytes32()], [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]);
-    // });
+    it('renounceRole', async function () {
+      await renounceRole(client, [...generateRandomBytes32()], [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]);
+    });
   });
 
   describe('whitelist', function () {
-    // it('dataFeedIdToReaderToWhitelistStatus', async function () {
-    //   await dataFeedIdToReaderToWhitelistStatus(client);
-    // });
+    it('dataFeedIdToReaderToWhitelistStatus', async function () {
+      await dataFeedIdToReaderToWhitelistStatus(client);
+    });
 
-    // it('dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus', async function () {
-    //   await dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(client, [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]);
-    // });
+    it('dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus', async function () {
+      await dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(client, [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]);
+    });
   });
 
   describe('extendWhitelistExpiration', function () {
-    // describe('Sender has whitelist expiration extender role', function () {
-    //   beforeAll(async function () {
-    //     await WithExtenderRole.setup(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)], userClient);
-    //     console.log("setup done for extendWhitelistExpiration");
-    //   });
+    describe('Sender has whitelist expiration extender role', function () {
+      beforeAll(async function () {
+        await WithExtenderRole.setup(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)], userClient);
+        console.log("setup done for extendWhitelistExpiration");
+      });
 
-    //   it('extendsWhitelistExpiration', async function () {
-    //     await WithExtenderRole.extendsWhitelistExpiration(userClient);
-    //   });
+      it('extendsWhitelistExpiration', async function () {
+        await WithExtenderRole.extendsWhitelistExpiration(userClient);
+      });
 
-    //   it('doesNotExtendExpiration', async function () {
-    //     await WithExtenderRole.doesNotExtendExpiration(userClient);
-    //   });
+      it('doesNotExtendExpiration', async function () {
+        await WithExtenderRole.doesNotExtendExpiration(userClient);
+      });
 
-    //   it('readerZeroAddress', async function () {
-    //     await WithExtenderRole.readerZeroAddress(userClient);
-    //   });
+      it('readerZeroAddress', async function () {
+        await WithExtenderRole.readerZeroAddress(userClient);
+      });
 
-    //   it('dataFeedIdZero', async function () {
-    //     await WithExtenderRole.dataFeedIdZero(userClient);
-    //   });
+      it('dataFeedIdZero', async function () {
+        await WithExtenderRole.dataFeedIdZero(userClient);
+      });
 
-    //   afterAll(async function () {
-    //     await WithExtenderRole.tearDown(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]);
-    //     console.log("tear down done for extendWhitelistExpiration");
-    //   });
-    // });
+      afterAll(async function () {
+        await WithExtenderRole.tearDown(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]);
+        console.log("tear down done for extendWhitelistExpiration");
+      });
+    });
 
-    // describe('Sender is the manager', function () {
-    //   it('extendsWhitelistExpiration', async function () {
-    //     await WithExtenderRole.extendsWhitelistExpiration(client);
-    //   });
+    describe('Sender is the manager', function () {
+      it('extendsWhitelistExpiration', async function () {
+        await WithExtenderRole.extendsWhitelistExpiration(client);
+      });
 
-    //   it('doesNotExtendExpiration', async function () {
-    //     await WithExtenderRole.doesNotExtendExpiration(client);
-    //   });
+      it('doesNotExtendExpiration', async function () {
+        await WithExtenderRole.doesNotExtendExpiration(client);
+      });
 
-    //   it('readerZeroAddress', async function () {
-    //     await WithExtenderRole.readerZeroAddress(client);
-    //   });
+      it('readerZeroAddress', async function () {
+        await WithExtenderRole.readerZeroAddress(client);
+      });
 
-    //   it('dataFeedIdZero', async function () {
-    //     await WithExtenderRole.dataFeedIdZero(client);
-    //   });
-    // });
+      it('dataFeedIdZero', async function () {
+        await WithExtenderRole.dataFeedIdZero(client);
+      });
+    });
   });
 
   describe('setWhitelistExpiration', function () {
     describe('Sender has whitelist expiration setter role', function () {
-      // beforeAll(async function () {
-      //   await WithSetterRole.setup(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)], userClient);
-      //   console.log("setup done for setWhitelistExpiration");
-      // });
+      beforeAll(async function () {
+        await WithSetterRole.setup(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)], userClient);
+        console.log("setup done for setWhitelistExpiration");
+      });
 
-      // it('setsWhitelistExpiration', async function () {
-      //   await WithSetterRole.setsWhitelistExpiration(userClient);
-      // });
+      it('setsWhitelistExpiration', async function () {
+        await WithSetterRole.setsWhitelistExpiration(userClient);
+      });
 
-      // it('readerZeroAddress', async function () {
-      //   await WithSetterRole.readerZeroAddress(userClient);
-      // });
+      it('readerZeroAddress', async function () {
+        await WithSetterRole.readerZeroAddress(userClient);
+      });
 
-      // it('dataFeedIdZero', async function () {
-      //   await WithSetterRole.dataFeedIdZero(userClient);
-      // });
+      it('dataFeedIdZero', async function () {
+        await WithSetterRole.dataFeedIdZero(userClient);
+      });
 
-      // afterAll(async function () {
-      //   await WithSetterRole.tearDown(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]);
-      //   console.log("tear down done for extendWhitelistExpiration");
-      // });
+      afterAll(async function () {
+        await WithSetterRole.tearDown(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]);
+        console.log("tear down done for extendWhitelistExpiration");
+      });
     });
 
     describe('Sender is the manager', function () {
-      // it('setsWhitelistExpiration', async function () {
-      //   await WithSetterRole.setsWhitelistExpiration(client);
-      // });
+      it('setsWhitelistExpiration', async function () {
+        await WithSetterRole.setsWhitelistExpiration(client);
+      });
 
-      // it('readerZeroAddress', async function () {
-      //   await WithSetterRole.readerZeroAddress(client);
-      // });
+      it('readerZeroAddress', async function () {
+        await WithSetterRole.readerZeroAddress(client);
+      });
 
-      // it('dataFeedIdZero', async function () {
-      //   await WithSetterRole.dataFeedIdZero(client);
-      // });
+      it('dataFeedIdZero', async function () {
+        await WithSetterRole.dataFeedIdZero(client);
+      });
     });
   });
 
   describe('setIndefiniteWhitelistStatus', function () {
     describe('Sender has whitelist expiration setter role', function () {
-      // beforeAll(async function () {
-      //   await WithIndefiniteWhitelisterSetterRole.setup(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)], userClient);
-      //   console.log("setup done for setIndefiniteWhitelistStatus");
-      // });
+      beforeAll(async function () {
+        await WithIndefiniteWhitelisterSetterRole.setup(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)], userClient);
+        console.log("setup done for setIndefiniteWhitelistStatus");
+      });
 
-      // it('setIndefiniteWhitelistStatus', async function () {
-      //   await WithIndefiniteWhitelisterSetterRole.setIndefiniteWhitelistStatus(
-      //     userClient,
-      //     [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]
-      //   );
-      // });
+      it('setIndefiniteWhitelistStatus', async function () {
+        await WithIndefiniteWhitelisterSetterRole.setIndefiniteWhitelistStatus(
+          userClient,
+          [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]
+        );
+      });
 
-      // it('readerZeroAddress', async function () {
-      //   await WithIndefiniteWhitelisterSetterRole.readerZeroAddress(userClient);
-      // });
+      it('readerZeroAddress', async function () {
+        await WithIndefiniteWhitelisterSetterRole.readerZeroAddress(userClient);
+      });
 
-      // it('dataFeedIdZero', async function () {
-      //   await WithIndefiniteWhitelisterSetterRole.dataFeedIdZero(userClient);
-      // });
+      it('dataFeedIdZero', async function () {
+        await WithIndefiniteWhitelisterSetterRole.dataFeedIdZero(userClient);
+      });
 
-      // afterAll(async function () {
-      //   await WithIndefiniteWhitelisterSetterRole.tearDown(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]);
-      //   console.log("tear down done for extendWhitelistExpiration");
-      // });
+      afterAll(async function () {
+        await WithIndefiniteWhitelisterSetterRole.tearDown(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]);
+        console.log("tear down done for extendWhitelistExpiration");
+      });
     });
 
     describe('Sender is the manager', function () {
-      // it('setIndefiniteWhitelistStatus', async function () {
-      //   await WithIndefiniteWhitelisterSetterRole.setIndefiniteWhitelistStatus(
-      //     client, [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
-      //   );
-      // });
+      it('setIndefiniteWhitelistStatus', async function () {
+        await WithIndefiniteWhitelisterSetterRole.setIndefiniteWhitelistStatus(
+          client, [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
+        );
+      });
 
-      // it('readerZeroAddress', async function () {
-      //   await WithIndefiniteWhitelisterSetterRole.readerZeroAddress(client);
-      // });
+      it('readerZeroAddress', async function () {
+        await WithIndefiniteWhitelisterSetterRole.readerZeroAddress(client);
+      });
 
-      // it('dataFeedIdZero', async function () {
-      //   await WithIndefiniteWhitelisterSetterRole.dataFeedIdZero(client);
-      // });
+      it('dataFeedIdZero', async function () {
+        await WithIndefiniteWhitelisterSetterRole.dataFeedIdZero(client);
+      });
     });
   });
 
   describe('revokeIndefiniteWhitelistStatus', function () {
-    // it('setIndefiniteWhitelistStatus', async function () {
-    //   await revokesIndefiniteWhitelistStatus(
-    //     client,
-    //     userClient,
-    //     [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
-    //     client
-    //   );
-    // });
+    it('setIndefiniteWhitelistStatus', async function () {
+      await revokesIndefiniteWhitelistStatus(
+        client,
+        userClient,
+        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
+        client
+      );
+    });
 
-    // it('setterHasIndefiniteWhitelisterRole', async function () {
-    //   await setterHasIndefiniteWhitelisterRole(
-    //     client,
-    //     userClient,
-    //     [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
-    //   );
-    // });
+    it('setterHasIndefiniteWhitelisterRole', async function () {
+      await setterHasIndefiniteWhitelisterRole(
+        client,
+        userClient,
+        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
+      );
+    });
   });
 
   describe('readDataFeedWithId', function () {
-    // let role;
+    let role;
 
-    // beforeAll(async () => {
-    //   role = (await contract.roles())[0];
-    // });
+    beforeAll(async () => {
+      role = (await contract.roles())[0];
+    });
 
-    // it('readerNotPermitted', async function () {
-    //   await readerNotPermitted(
-    //     client,
-    //     userClient,
-    //     role,
-    //     [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
-    //   );
-    // });
+    it('readerNotPermitted', async function () {
+      await readerNotPermitted(
+        client,
+        userClient,
+        role,
+        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
+      );
+    });
 
-    // it('readerUnlimitedReaderReads', async function () {
-    //   await readerUnlimitedReaderReads(
-    //     client,
-    //     [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
-    //     role,
-    //     userClient,
-    //   );
-    // });
+    it('readerUnlimitedReaderReads', async function () {
+      await readerUnlimitedReaderReads(
+        client,
+        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
+        role,
+        userClient,
+      );
+    });
 
-    // it('readerWhitelistedReads', async function () {
-    //   await readerWhitelistedReads(
-    //     client,
-    //     [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
-    //     userClient,
-    //   );
-    // });
+    it('readerWhitelistedReads', async function () {
+      await readerWhitelistedReads(
+        client,
+        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
+        userClient,
+      );
+    });
   });
 
   describe('readDataFeedWithName', function () {
-    // let name;
-    // let expected;
-    // let roles;
+    let name;
+    let expected;
+    let roles;
 
-    // beforeAll(async () => {
-    //   const value = 456;
-    //   const template = generateRandomBytes32();
-    //   const timestamp = currentTimestamp();
-    //   const airnodeAddress = keyPair.getPublicKey().data;
-    //   const [data, signature] = await encodeAndSignData(value, template, timestamp, keyPair);
-    //   await client.updateBeaconWithSignedData(airnodeAddress, template, timestamp, data, signature);
+    beforeAll(async () => {
+      const value = 456;
+      const template = generateRandomBytes32();
+      const timestamp = currentTimestamp();
+      const airnodeAddress = keyPair.getPublicKey().data;
+      const [data, signature] = await encodeAndSignData(value, template, timestamp, keyPair);
+      await client.updateBeaconWithSignedData(airnodeAddress, template, timestamp, data, signature);
 
-    //   const beaconId = deriveBeaconId(
-    //     toBuffer(airnodeAddress),
-    //     template
-    //   );
+      const beaconId = deriveBeaconId(
+        toBuffer(airnodeAddress),
+        template
+      );
 
-    //   expected = {
-    //     value: [...encodeData(value)],
-    //     timestamp 
-    //   };
+      expected = {
+        value: [...encodeData(value)],
+        timestamp 
+      };
 
-    //   roles = await contract.roles();
-    //   await client.grantRole(
-    //     roles[1],
-    //     [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
-    //   );
-    //   await delay(1000);
-    //   name = Buffer.from(ethers.utils.formatBytes32String('My dAPI 2').substring(2), "hex");
-    //   await setsDAPIName(client, name, beaconId);
-    //   console.log("setup done for read with name");
-    // });
+      roles = await contract.roles();
+      await client.grantRole(
+        roles[1],
+        [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
+      );
+      await delay(1000);
+      name = Buffer.from(ethers.utils.formatBytes32String('My dAPI 2').substring(2), "hex");
+      await setsDAPIName(client, name, beaconId);
+      console.log("setup done for read with name");
+    });
 
-    // it('readerWhitelistedReadsByName', async function () {
-    //   await readerWhitelistedReadsByName(
-    //     client,
-    //     name,
-    //     [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
-    //     userClient,
-    //     expected
-    //   );
-    // });
+    it('readerWhitelistedReadsByName', async function () {
+      await readerWhitelistedReadsByName(
+        client,
+        name,
+        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
+        userClient,
+        expected
+      );
+    });
 
-    // it('unlimitedReaderReadsWithName', async function () {
-    //   await unlimitedReaderReadsWithName(
-    //     client,
-    //     name,
-    //     [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
-    //     roles[0],
-    //     userClient,
-    //     expected
-    //   );
-    // });
+    it('unlimitedReaderReadsWithName', async function () {
+      await unlimitedReaderReadsWithName(
+        client,
+        name,
+        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
+        roles[0],
+        userClient,
+        expected
+      );
+    });
 
-    // it('readerNotPermittedWithName', async function () {
-    //   await readerNotPermittedWithName(
-    //     client,
-    //     name,
-    //     userClient,
-    //     roles[0],
-    //     [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
-    //   );
-    // });
+    it('readerNotPermittedWithName', async function () {
+      await readerNotPermittedWithName(
+        client,
+        name,
+        userClient,
+        roles[0],
+        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
+      );
+    });
 
-    // afterAll(async () => {
-    //   await client.revokeRole(
-    //     roles[1],
-    //     [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
-    //   );
-    //   console.log("tear down done for read with name");
-    // });
+    afterAll(async () => {
+      await client.revokeRole(
+        roles[1],
+        [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
+      );
+      console.log("tear down done for read with name");
+    });
   });
 });

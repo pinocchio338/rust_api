@@ -60,7 +60,6 @@ export ADMIN_ACCOUNT=mocha-test.testnet
 export USER_ACCOUNT=user-test.testnet
 ```
 
-
 ### Login on CLI
 Once the acconts are created, you need to login from CLI:
 ```

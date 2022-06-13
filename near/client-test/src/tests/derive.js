@@ -10,7 +10,7 @@ async function templateIdZero(client, airnode) {
   try {
     const beaconId = await client.deriveBeaconId(airnode, [...Buffer.alloc(32, 0)]);
   } catch (e) {
-    ensure(e.toString().includes("TempalteIdZero"));
+    ensure(e.toString().includes("TemplateIdZero"));
   }
 }
 
