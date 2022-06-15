@@ -21,7 +21,7 @@ const { connect, KeyPair, keyStores, providers } = require("near-api-js");
 const path = require("path");
 const { base64 } = require("ethers/lib/utils");
 const { assert } = require("console");
-const { updatesBeaconSetWithSignedData, updatedSetValueOutdated, lengthNotCorrect, notAllSignaturesValid, notAllTimestampValid, parameterLengthMismatch } = require("./tests/updateBeaconSetWithSignedData");
+const { updatesBeaconSetWithSignedData, updatedSetValueOutdated, lengthNotCorrect, notAllSignaturesValid, parameterLengthMismatch } = require("./tests/updateBeaconSetWithSignedData");
 const { readerZeroAddress, readerNotWhitelisted, readerWhitelisted, readerUnlimitedReaderRole } = require("./tests/readerCanReadDataFeed");
 const { dataFeedIdToReaderToWhitelistStatus, dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus } = require("./tests/whitelist");
 const { revokeRole, renounceRole } = require("./tests/role");
@@ -50,6 +50,9 @@ const config = {
   nodeUrl: "https://rpc.testnet.near.org",
 };
 
+// Network can get unpredictable, set timeout to a large value just in case
+jest.setTimeout(120_000);
+
 describe('Token', function () {
   let contract;
   let userContract;
@@ -65,16 +68,6 @@ describe('Token', function () {
 
   let beaconSetId;
 
-  // define all the data
-  const templateId1 = 1;  
-  const data1 = 121;
-
-  const templateId2 = 2;
-  const data2 = 122;
-
-  const templateId3 = 3;
-  const data3 = 123;
-
   // This is the actual dapi client
   let client;
   // This is just a test util contract with propoer reading access, for data checking purposes
@@ -89,7 +82,6 @@ describe('Token', function () {
     contract = await near.loadContract(contractAccount, {
       viewMethods: [
         'has_role',
-        // 'read_with_data_point_id',
         'roles',
         'name_to_data_point_id',
         'derive_beacon_id',
@@ -226,16 +218,44 @@ describe('Token', function () {
   });
 
   describe('updateBeaconSetWithBeacons', function () {
+    let roles;
+
+    beforeAll(async () => {
+      roles = await contract.roles();
+      await client.grantRole(
+        roles[0],
+        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]
+      );
+      await delay(1000);
+    });
+
+    afterAll(async () => {
+      await client.revokeRole(
+        roles[0],
+        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]
+      );
+      await delay(1000);
+    })
+
     it('updatesBeaconSet', async function () {
       const beaconIds = [];
       const beaconData = [123, 456, 789];
-      let timestamp = currentTimestamp();
+      let expectedTimestamp = 0;
       for (let ind = 0; ind < beaconData.length; ind++) {
-        timestamp++;
-        // await updateBeacon(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds[ind], beaconData[ind], timestamp);
+        const timestamp = currentTimestamp() + 1;
+        await updateBeacon(
+          client,
+          keyPair,
+          keyPair.getPublicKey().data,
+          beaconSetTemplateIds[ind],
+          beaconData[ind],
+          timestamp,
+          userClient
+        );
         beaconIds.push([...deriveBeaconId(keyPair.getPublicKey().data, beaconSetTemplateIds[ind])]);
+        expectedTimestamp += timestamp;
       }
-      await updatesBeaconSet(client, beaconIds);
+      await updatesBeaconSet(client, beaconIds, 456, Math.floor(expectedTimestamp / beaconData.length), userClient);
     });
 
     it('lessThanTwoBeacons', async function () {
@@ -244,8 +264,27 @@ describe('Token', function () {
   });
 
   describe('updateBeaconSetWithSignedData', function () {
+    let roles;
+
+    beforeAll(async () => {
+      roles = await contract.roles();
+      await client.grantRole(
+        roles[0],
+        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]
+      );
+      await delay(1000);
+    });
+
+    afterAll(async () => {
+      await client.revokeRole(
+        roles[0],
+        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]
+      );
+      await delay(1000);
+    });
+
     it('updatesBeaconSetWithSignedData', async function () {
-      await updatesBeaconSetWithSignedData(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
+      await updatesBeaconSetWithSignedData(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds, userClient);
     });
 
     it('updatedSetValueOutdated', async function () {
@@ -257,17 +296,11 @@ describe('Token', function () {
     });
 
     it('lengthNotCorrect', async function () {
-      // TODO: debugging
-      // await lengthNotCorrect(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
+      await lengthNotCorrect(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
     });
 
     it('notAllSignaturesValid', async function () {
       await notAllSignaturesValid(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
-    });
-
-    it('notAllTimestampValid', async function () {
-      // TODO
-      await notAllTimestampValid(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
     });
 
     it('lessThanTwoBeacons', async function () {

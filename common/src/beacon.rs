@@ -247,7 +247,7 @@ pub fn update_dapi_with_signed_data<
             // be small enough to be typecast into `uint32`
             accumulated_timestamp += timestamp;
             beacon_ids.push(derive_beacon_id(
-                airnodes[ind].clone().to_vec(),
+                airnodes[ind].clone(),
                 template_ids[ind],
             ));
         } else {
@@ -402,7 +402,16 @@ fn not_zero(bytes: &[u8]) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use crate::beacon::not_zero;
     use crate::derive_beacon_id;
+
+    #[test]
+    fn not_zero_works() {
+        assert!(!not_zero(&[0;12]));
+        let mut v = [0;12];
+        v[2] = 1;
+        assert!(not_zero(&v));
+    }
 
     #[test]
     fn encode_packed_works() {
