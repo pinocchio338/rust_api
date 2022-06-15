@@ -1,19 +1,13 @@
 use api3_common::abi::{Int, U256};
-use api3_common::{Bytes32, DataPoint, Zero};
+use api3_common::{DataPoint, Zero};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Clone, Default)]
-pub struct Address(pub Bytes32);
-
-impl From<Address> for Bytes32 {
-    fn from(a: Address) -> Self {
-        a.0
-    }
-}
+pub struct Address(pub Vec<u8>);
 
 impl Zero for Address {
     fn is_zero(&self) -> bool {
-        self.0 == Bytes32::default()
+        self.0.is_empty()
     }
 }
 

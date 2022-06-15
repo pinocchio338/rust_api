@@ -16,7 +16,7 @@ class WithExtenderRole {
 
     static async cannotExtendWhitelistExpiration(client) {
         const timestamp = currentTimestamp();
-        const reader = [...generateRandomBytes32()];
+        const reader = generateRandomBytes32().toString();
         const beaconId = [...generateRandomBytes32()];
         try {
             await client.extendWhitelistExpiration(beaconId, reader, timestamp);
@@ -28,7 +28,7 @@ class WithExtenderRole {
 
     static async extendsWhitelistExpiration(client) {
         const timestamp = currentTimestamp();
-        const reader = [...generateRandomBytes32()];
+        const reader = generateRandomBytes32().toString();
         const beaconId = [...generateRandomBytes32()];
         await client.extendWhitelistExpiration(beaconId, reader, timestamp);
         const r = await client.dataFeedIdToReaderToWhitelistStatus(
@@ -42,7 +42,7 @@ class WithExtenderRole {
     }
 
     static async doesNotExtendExpiration(client) {
-        const reader = [...generateRandomBytes32()];
+        const reader = generateRandomBytes32().toString();
         const beaconId = [...generateRandomBytes32()];
 
         try {
@@ -56,7 +56,7 @@ class WithExtenderRole {
         const timestamp = currentTimestamp();
         const beaconId = [...generateRandomBytes32()];
         try {
-            await client.extendWhitelistExpiration(beaconId, [...Buffer.alloc(32, 0)], timestamp);
+            await client.extendWhitelistExpiration(beaconId, "", timestamp);
             ensure(false);
         } catch(e) {
             ensure(e.toString().includes("UserAddressZero"));
@@ -66,7 +66,7 @@ class WithExtenderRole {
     static async dataFeedIdZero(client) {
         const timestamp = currentTimestamp();
         try {
-            await client.extendWhitelistExpiration([...Buffer.alloc(32, 0)], [...generateRandomBytes32()], timestamp);
+            await client.extendWhitelistExpiration([...Buffer.alloc(32, 0)], generateRandomBytes32().toString(), timestamp);
             ensure(false);
         } catch(e) {
             ensure(e.toString().includes("ServiceIdZero"));

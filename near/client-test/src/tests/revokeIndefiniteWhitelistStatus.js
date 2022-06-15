@@ -1,7 +1,7 @@
-const { ensure, generateRandomBytes32, currentTimestamp, delay } = require("../util");
+const { ensure, generateRandomBytes32, delay } = require("../util");
 
 async function revokesIndefiniteWhitelistStatus(client, listerClient, listerAccount, randomClient) {
-    const reader = [...generateRandomBytes32()];
+    const reader = generateRandomBytes32().toString();
     const beaconId = [...generateRandomBytes32()];
 
     const indefiniteWhitelisterRole = await client.indefiniteWhitelisterRole();
@@ -41,7 +41,7 @@ async function revokesIndefiniteWhitelistStatus(client, listerClient, listerAcco
 }
 
 async function setterHasIndefiniteWhitelisterRole(client, listerClient, listerAccount) {
-    const reader = [...generateRandomBytes32()];
+    const reader = generateRandomBytes32().toString();
     const beaconId = [...generateRandomBytes32()];
 
     const indefiniteWhitelisterRole = await client.indefiniteWhitelisterRole();

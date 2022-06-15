@@ -55,7 +55,7 @@ USER_ACCOUNT: test util account, mainly for reading data points with unlimited a
 Now go to near testnet and create the above accounts, you can choose your own names. Remember to define the above env variables with the account 
 names, i.e. for our dev env, it's:
 ```
-export CONTRACT_ACCOUNT=test-dapi.testnet
+export CONTRACT_ACCOUNT=dapi-contract.testnet
 export ADMIN_ACCOUNT=mocha-test.testnet
 export USER_ACCOUNT=user-test.testnet
 ```

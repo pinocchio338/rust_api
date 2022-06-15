@@ -1,7 +1,7 @@
 const { ensure, generateRandomBytes32, delay } = require("../util");
 
 async function revokeRole(client, role) {
-    const who = [...generateRandomBytes32()];
+    const who = generateRandomBytes32().toString();
     ensure(!(await client.hasRole(role, who)));
     await client.grantRole(role, who);
     await delay(1000);

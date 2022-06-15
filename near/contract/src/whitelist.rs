@@ -1,5 +1,5 @@
 use crate::utils::ReadWrite;
-use crate::{msg_sender, Address};
+use crate::{msg_sender, Address, near_check_result};
 use api3_common::abi::{Token, U256};
 use api3_common::{
     ensure, keccak_packed, AccessControlRegistry, AccessControlRegistryAdminnedWithManager,
@@ -72,8 +72,8 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> NearWhitelist<'a, Acc
     pub fn data_feed_id_to_reader_to_setter_to_indefinite_whitelist_status(
         &self,
         data_feed_id: &Bytes32,
-        reader: &Bytes32,
-        setter: &Bytes32,
+        reader: &[u8],
+        setter: &[u8],
     ) -> Option<bool> {
         let key = Self::triple_hash(&data_feed_id, reader, setter);
         let indefinite = match &self.service_id_to_user_to_setter_to_indefinite_whitelist_status {
@@ -86,7 +86,7 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> NearWhitelist<'a, Acc
     pub fn data_feed_id_to_whitelist_status(
         &self,
         data_feed_id: &Bytes32,
-        reader: &Bytes32,
+        reader: &[u8],
     ) -> Option<(u64, Bytes32)> {
         let key = Self::double_hash(&data_feed_id, reader);
         let s = match &self.service_id_to_user_to_whitelist_status {
@@ -323,13 +323,12 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> WhitelistWithManager
         user: &<Self as Whitelist>::Address,
         expiration_timestamp: u64,
     ) {
-        ensure!(
+        near_check_result(ensure!(
             self.has_whitelist_expiration_extender_role_or_is_manager(&msg_sender()),
             Error::AccessDenied
-        )
-        .unwrap();
-        ensure!(*service_id != [0; 32], Error::ServiceIdZero).unwrap();
-        ensure!(*user.as_ref() != [0; 32], Error::UserAddressZero).unwrap();
+        ));
+        near_check_result(ensure!(!service_id.is_zero(), Error::ServiceIdZero));
+        near_check_result(ensure!(!user.is_zero(), Error::UserAddressZero));
         Whitelist::extend_whitelist_expiration(self, service_id, user, expiration_timestamp);
     }
 
@@ -339,14 +338,13 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> WhitelistWithManager
         user: &<Self as Whitelist>::Address,
         expiration_timestamp: u64,
     ) {
-        ensure!(
+        near_check_result(ensure!(
             self.has_whitelist_expiration_setter_role_or_is_manager(&msg_sender()),
             Error::AccessDenied
-        )
-        .unwrap();
+        ));
 
-        ensure!(!service_id.is_zero(), Error::ServiceIdZero).unwrap();
-        ensure!(!user.is_zero(), Error::UserAddressZero).unwrap();
+        near_check_result(ensure!(!service_id.is_zero(), Error::ServiceIdZero));
+        near_check_result(ensure!(!user.is_zero(), Error::UserAddressZero));
 
         Whitelist::set_whitelist_expiration(self, service_id, user, expiration_timestamp)
     }
@@ -357,14 +355,13 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> WhitelistWithManager
         user: &<Self as Whitelist>::Address,
         status: bool,
     ) -> U256 {
-        ensure!(
+        near_check_result(ensure!(
             self.has_indefinite_whitelister_role_or_is_manager(&msg_sender()),
             Error::AccessDenied
-        )
-        .unwrap();
+        ));
 
-        ensure!(!service_id.is_zero(), Error::ServiceIdZero).unwrap();
-        ensure!(!user.is_zero(), Error::UserAddressZero).unwrap();
+        near_check_result(ensure!(!service_id.is_zero(), Error::ServiceIdZero));
+        near_check_result(ensure!(!user.is_zero(), Error::UserAddressZero));
 
         Whitelist::set_indefinite_whitelist_status(self, service_id, user, status)
     }
@@ -375,11 +372,10 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> WhitelistWithManager
         user: &<Self as Whitelist>::Address,
         setter: &<Self as Whitelist>::Address,
     ) -> (bool, U256) {
-        ensure!(
+        near_check_result(ensure!(
             !self.has_indefinite_whitelister_role_or_is_manager(setter),
             Error::SetterCanSetIndefiniteStatus
-        )
-        .unwrap();
+        ));
         Whitelist::revoke_indefinite_whitelist_status(self, service_id, user, setter)
     }
 }

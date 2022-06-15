@@ -132,18 +132,15 @@ impl TimestampChecker for NearClock {
 }
 
 pub(crate) fn msg_sender() -> Address {
-    let sender = near_sdk::env::predecessor_account_id();
-    let sender_bytes = sender.as_bytes();
-    let mut v = Bytes32::default();
-    v[0..sender_bytes.len()].copy_from_slice(sender_bytes);
-    Address(v)
+    let sender = near_sdk::env::predecessor_account_id().as_bytes().to_vec();
+    Address(sender)
 }
 
 pub(crate) struct NearAccessControlRegistry<'a> {
     manager: Address,
     admin_role_description: String,
     role_membership: ReadWrite<'a, LookupMap<Bytes32, bool>>,
-    role_admin: ReadWrite<'a, LookupMap<Bytes32, Address>>,
+    role_admin: ReadWrite<'a, LookupMap<Bytes32, Bytes32>>,
 }
 
 impl<'a> NearAccessControlRegistry<'a> {
@@ -151,7 +148,7 @@ impl<'a> NearAccessControlRegistry<'a> {
         manager: Address,
         admin_role_description: String,
         role_membership: &'a mut LookupMap<Bytes32, bool>,
-        role_admin: &'a mut LookupMap<Bytes32, Address>,
+        role_admin: &'a mut LookupMap<Bytes32, Bytes32>,
     ) -> Self {
         Self {
             manager,
@@ -165,7 +162,7 @@ impl<'a> NearAccessControlRegistry<'a> {
         manager: Address,
         admin_role_description: String,
         role_membership: &'a LookupMap<Bytes32, bool>,
-        role_admin: &'a LookupMap<Bytes32, Address>,
+        role_admin: &'a LookupMap<Bytes32, Bytes32>,
     ) -> Self {
         Self {
             manager,
@@ -232,8 +229,8 @@ impl<'a> AccessControlRegistry for NearAccessControlRegistry<'a> {
             return Some(Self::DEFAULT_ADMIN_ROLE);
         }
         match &self.role_admin {
-            ReadWrite::ReadOnly(a) => (*a).get(role).map(Bytes32::from),
-            ReadWrite::Write(a) => (*a).get(role).map(Bytes32::from),
+            ReadWrite::ReadOnly(a) => (*a).get(role),
+            ReadWrite::Write(a) => (*a).get(role),
         }
     }
 
@@ -243,7 +240,7 @@ impl<'a> AccessControlRegistry for NearAccessControlRegistry<'a> {
             ReadWrite::Write(a) => a,
         };
         (*a).remove(role);
-        (*a).insert(role, &Address(role_admin));
+        (*a).insert(role, &role_admin);
         Ok(())
     }
 
