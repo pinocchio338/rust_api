@@ -4,7 +4,7 @@ const {
   timestampNotValid, signatureNotValid
 } = require("./tests/updateBeaconWithSignedData");
 const { 
-  updatesBeaconSet, updatedValueOutdated, lessThanTwoBeacons
+  updatesBeaconSet, lessThanTwoBeacons
 
 } = require("./tests/updateBeaconSetWithBeacons");
 const { 
@@ -168,7 +168,7 @@ describe('Token', function () {
       // just wait a bit for the effects to take place
       await delay(1000);
 
-      const reader = [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)];
+      const reader = userAccount;
       const unlimitedReaderRole = (await contract.roles())[0];
       await client.grantRole([...unlimitedReaderRole], reader);
       await delay(1000);
@@ -182,7 +182,7 @@ describe('Token', function () {
       roles = await contract.roles();
       await client.grantRole(
         roles[0],
-        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]
+        userAccount
       );
       await delay(1000);
     });
@@ -190,7 +190,7 @@ describe('Token', function () {
     afterAll(async () => {
       await client.revokeRole(
         roles[0],
-        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]
+        userAccount
       );
       await delay(1000);
     })
@@ -224,7 +224,7 @@ describe('Token', function () {
       roles = await contract.roles();
       await client.grantRole(
         roles[0],
-        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]
+        userAccount
       );
       await delay(1000);
     });
@@ -232,7 +232,7 @@ describe('Token', function () {
     afterAll(async () => {
       await client.revokeRole(
         roles[0],
-        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]
+        userAccount
       );
       await delay(1000);
     })
@@ -270,7 +270,7 @@ describe('Token', function () {
       roles = await contract.roles();
       await client.grantRole(
         roles[0],
-        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]
+        userAccount
       );
       await delay(1000);
     });
@@ -278,7 +278,7 @@ describe('Token', function () {
     afterAll(async () => {
       await client.revokeRole(
         roles[0],
-        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]
+        userAccount
       );
       await delay(1000);
     });
@@ -317,7 +317,7 @@ describe('Token', function () {
       const roles = await contract.roles();
       await client.grantRole(
         roles[1],
-        [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
+        adminAccount
       );
       const dapiName = Buffer.from(ethers.utils.formatBytes32String('My dAPI').substring(2), "hex");
       await setsDAPIName(client, dapiName, beaconSetId);
@@ -327,7 +327,7 @@ describe('Token', function () {
       const roles = await contract.roles();
       await client.revokeRole(
         roles[1],
-        [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
+        adminAccount
       );
       const dapiName = Buffer.from(ethers.utils.formatBytes32String('My dAPI').substring(2), "hex");
       await senderNotNameSetter(client, dapiName, beaconSetId);
@@ -364,16 +364,16 @@ describe('Token', function () {
     });
 
     it('readerNotWhitelisted', async function () {
-      await readerNotWhitelisted(client, keyPair.getPublicKey().data);
+      await readerNotWhitelisted(client, adminAccount);
     });
 
     it('readerWhitelisted', async function () {
-      await readerWhitelisted(client, generateRandomBytes32(), keyPair.getPublicKey().data);
+      await readerWhitelisted(client, generateRandomBytes32(), adminAccount);
     });
 
     it('readerUnlimitedReaderRole', async function () {
       const roles = await contract.roles();
-      await readerUnlimitedReaderRole(client, keyPair.getPublicKey().data, roles[0]);
+      await readerUnlimitedReaderRole(client, adminAccount, roles[0]);
     });
   });
 
@@ -383,7 +383,7 @@ describe('Token', function () {
     });
 
     it('renounceRole', async function () {
-      await renounceRole(client, [...generateRandomBytes32()], [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]);
+      await renounceRole(client, [...generateRandomBytes32()], adminAccount);
     });
   });
 
@@ -393,14 +393,14 @@ describe('Token', function () {
     });
 
     it('dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus', async function () {
-      await dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(client, [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]);
+      await dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(client, adminAccount);
     });
   });
 
   describe('extendWhitelistExpiration', function () {
     describe('Sender has whitelist expiration extender role', function () {
       beforeAll(async function () {
-        await WithExtenderRole.setup(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)], userClient);
+        await WithExtenderRole.setup(client, userAccount, userClient);
         console.log("setup done for extendWhitelistExpiration");
       });
 
@@ -421,7 +421,7 @@ describe('Token', function () {
       });
 
       afterAll(async function () {
-        await WithExtenderRole.tearDown(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]);
+        await WithExtenderRole.tearDown(client, userAccount);
         console.log("tear down done for extendWhitelistExpiration");
       });
     });
@@ -448,7 +448,7 @@ describe('Token', function () {
   describe('setWhitelistExpiration', function () {
     describe('Sender has whitelist expiration setter role', function () {
       beforeAll(async function () {
-        await WithSetterRole.setup(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)], userClient);
+        await WithSetterRole.setup(client, userAccount, userClient);
         console.log("setup done for setWhitelistExpiration");
       });
 
@@ -465,7 +465,7 @@ describe('Token', function () {
       });
 
       afterAll(async function () {
-        await WithSetterRole.tearDown(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]);
+        await WithSetterRole.tearDown(client, userAccount);
         console.log("tear down done for extendWhitelistExpiration");
       });
     });
@@ -488,14 +488,14 @@ describe('Token', function () {
   describe('setIndefiniteWhitelistStatus', function () {
     describe('Sender has whitelist expiration setter role', function () {
       beforeAll(async function () {
-        await WithIndefiniteWhitelisterSetterRole.setup(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)], userClient);
+        await WithIndefiniteWhitelisterSetterRole.setup(client, userAccount, userClient);
         console.log("setup done for setIndefiniteWhitelistStatus");
       });
 
       it('setIndefiniteWhitelistStatus', async function () {
         await WithIndefiniteWhitelisterSetterRole.setIndefiniteWhitelistStatus(
           userClient,
-          [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]
+          userAccount
         );
       });
 
@@ -508,7 +508,7 @@ describe('Token', function () {
       });
 
       afterAll(async function () {
-        await WithIndefiniteWhitelisterSetterRole.tearDown(client, [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)]);
+        await WithIndefiniteWhitelisterSetterRole.tearDown(client, userAccount);
         console.log("tear down done for extendWhitelistExpiration");
       });
     });
@@ -516,7 +516,7 @@ describe('Token', function () {
     describe('Sender is the manager', function () {
       it('setIndefiniteWhitelistStatus', async function () {
         await WithIndefiniteWhitelisterSetterRole.setIndefiniteWhitelistStatus(
-          client, [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
+          client, adminAccount
         );
       });
 
@@ -535,7 +535,7 @@ describe('Token', function () {
       await revokesIndefiniteWhitelistStatus(
         client,
         userClient,
-        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
+        userAccount,
         client
       );
     });
@@ -544,7 +544,7 @@ describe('Token', function () {
       await setterHasIndefiniteWhitelisterRole(
         client,
         userClient,
-        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
+        userAccount,
       );
     });
   });
@@ -561,14 +561,14 @@ describe('Token', function () {
         client,
         userClient,
         role,
-        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
+        userAccount,
       );
     });
 
     it('readerUnlimitedReaderReads', async function () {
       await readerUnlimitedReaderReads(
         client,
-        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
+        userAccount,
         role,
         userClient,
       );
@@ -577,7 +577,7 @@ describe('Token', function () {
     it('readerWhitelistedReads', async function () {
       await readerWhitelistedReads(
         client,
-        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
+        userAccount,
         userClient,
       );
     });
@@ -609,7 +609,7 @@ describe('Token', function () {
       roles = await contract.roles();
       await client.grantRole(
         roles[1],
-        [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
+        adminAccount
       );
       await delay(1000);
       name = Buffer.from(ethers.utils.formatBytes32String('My dAPI 2').substring(2), "hex");
@@ -621,7 +621,7 @@ describe('Token', function () {
       await readerWhitelistedReadsByName(
         client,
         name,
-        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
+        userAccount,
         userClient,
         expected
       );
@@ -631,7 +631,7 @@ describe('Token', function () {
       await unlimitedReaderReadsWithName(
         client,
         name,
-        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
+        userAccount,
         roles[0],
         userClient,
         expected
@@ -644,14 +644,14 @@ describe('Token', function () {
         name,
         userClient,
         roles[0],
-        [...Buffer.concat([Buffer.from(userAccount, 'ascii')], 32)],
+        userAccount,
       );
     });
 
     afterAll(async () => {
       await client.revokeRole(
         roles[1],
-        [...Buffer.concat([Buffer.from(adminAccount, 'ascii')], 32)]
+        adminAccount
       );
       console.log("tear down done for read with name");
     });

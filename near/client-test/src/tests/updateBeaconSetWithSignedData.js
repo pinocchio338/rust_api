@@ -1,20 +1,26 @@
 const ethers = require("ethers");
 const { 
-  toBuffer, ensure, currentTimestamp, bufferU64BE,
-  encodeAndSignData, delay, encodeData, keccak256Packed
+  toBuffer, ensure, currentTimestamp, bufferU64BE, array_equals, deriveBeaconId,
+  encodeAndSignData, delay, encodeData, keccak256Packed, deriveDApiId
 } = require("../util");
 
 async function updatesBeaconSetWithSignedData(client, signer, airnodeAddress, beaconSetTemplateIds, readerClient) {
     let timestamp = currentTimestamp();
     timestamp++;
     
-    const [data, signature] = await encodeAndSignData(100, beaconSetTemplateIds[0], timestamp, signer);
+    const beaconIds = [];
+
+    const [d1, d2, d3] = [100, 101, 102];
+    const [data, signature] = await encodeAndSignData(d1, beaconSetTemplateIds[0], timestamp, signer);
+    beaconIds.push([...deriveBeaconId(airnodeAddress, beaconSetTemplateIds[0])]);
     await client.updateBeaconWithSignedData(airnodeAddress, beaconSetTemplateIds[0], timestamp, data, signature);
     await delay(1000);
 
     // Sign data for the next two beacons
-    const [data1, signature1] = await encodeAndSignData(105, beaconSetTemplateIds[1], timestamp, signer);
-    const [data2, signature2] = await encodeAndSignData(110, beaconSetTemplateIds[2], timestamp, signer);
+    beaconIds.push([...deriveBeaconId(airnodeAddress, beaconSetTemplateIds[1])]);
+    const [data1, signature1] = await encodeAndSignData(d2, beaconSetTemplateIds[1], timestamp, signer);
+    beaconIds.push([...deriveBeaconId(airnodeAddress, beaconSetTemplateIds[2])]);
+    const [data2, signature2] = await encodeAndSignData(d3, beaconSetTemplateIds[2], timestamp, signer);
 
     await client.updateBeaconSetWithSignedData(
       [airnodeAddress, airnodeAddress, airnodeAddress],
@@ -24,9 +30,9 @@ async function updatesBeaconSetWithSignedData(client, signer, airnodeAddress, be
       [[], [...signature1], [...signature2]]
     );
 
-    const beacon = await readerClient.readDataFeedWithId(expectedId);
+    const beacon = await readerClient.readDataFeedWithId([...deriveDApiId(beaconIds)]);
     ensure(
-      array_equals(beacon.value, [...encodeData(value)])
+      array_equals(beacon.value, [...encodeData(d2)])
     );
     ensure(beacon.timestamp === timestamp);
 }

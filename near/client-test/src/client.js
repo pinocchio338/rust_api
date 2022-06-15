@@ -8,19 +8,19 @@ class DapiServer {
     }
 
     async hasRole(role, who) {
-        return await this.contract.has_role({ role: [...role], who: [...who]});
+        return await this.contract.has_role({ role: [...role], who});
     }
 
     async grantRole(role, who) {
-        return await this.contract.grant_role({ args: { role: [...role], who: [...who] } });
+        return await this.contract.grant_role({ args: { role: [...role], who } });
     }
 
     async revokeRole(role, who) {
-        return await this.contract.revoke_role( { args: { role: [...role], who: [...who]} });
+        return await this.contract.revoke_role( { args: { role: [...role], who} });
     }
 
     async renounceRole(role, who) {
-        return await this.contract.renounce_role( { args: { role: [...role], who: [...who]} });
+        return await this.contract.renounce_role( { args: { role: [...role], who} });
     }
 
     async readDataFeedWithId(dataPointId) {
@@ -145,7 +145,7 @@ class DapiServer {
             {
                 args: {
                     service_id: [...serviceId],
-                    user: [...user],
+                    user,
                     status
                 }
             }
@@ -157,7 +157,7 @@ class DapiServer {
             {
                 args: {
                     service_id: [...serviceId],
-                    user: [...user],
+                    user,
                     expiration_timestamp: expirationTimestamp
                 }
             }
@@ -169,8 +169,8 @@ class DapiServer {
             {
                 args: {
                     service_id: [...serviceId],
-                    user: [...user],
-                    setter: [...setter]
+                    user,
+                    setter
                 }
             }
         );
@@ -181,28 +181,28 @@ class DapiServer {
             {
                 args: {
                     service_id: [...serviceId],
-                    user: [...user],
+                    user,
                     expiration_timestamp: expirationTimestamp
                 }
             }
         );
     }
 
-    async dataFeedIdToReaderToWhitelistStatus(dataFeedId, user) {
+    async dataFeedIdToReaderToWhitelistStatus(dataFeedId, reader) {
         return await this.contract.data_feed_id_to_whitelist_status(
             {
                 data_feed_id: [...dataFeedId],
-                reader: [...user]
+                reader
             }
         );
     }
 
-    async dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(dataFeedId, user, setter) {
+    async dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(dataFeedId, reader, setter) {
         return await this.contract.data_feed_id_to_reader_to_setter_to_indefinite_whitelist_status(
             {
                 data_feed_id: [...dataFeedId],
-                reader: [...user],
-                setter: [...setter]
+                reader,
+                setter
             }
         );
     }

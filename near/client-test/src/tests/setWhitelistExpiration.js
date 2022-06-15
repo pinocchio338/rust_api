@@ -16,7 +16,7 @@ class WithSetterRole {
 
     static async setsWhitelistExpiration(client) {
         const timestamp = currentTimestamp();
-        const reader = [...generateRandomBytes32()];
+        const reader = generateRandomBytes32().toString();
         const beaconId = [...generateRandomBytes32()];
         await client.setWhitelistExpiration(beaconId, reader, timestamp);
         const r = await client.dataFeedIdToReaderToWhitelistStatus(
@@ -31,7 +31,7 @@ class WithSetterRole {
 
     static async cannotSetWhitelistExpiration(client) {
         const timestamp = currentTimestamp();
-        const reader = [...generateRandomBytes32()];
+        const reader = generateRandomBytes32().toString();
         const beaconId = [...generateRandomBytes32()];
         try {
             await client.setWhitelistExpiration(beaconId, reader, timestamp);
@@ -45,7 +45,7 @@ class WithSetterRole {
         const timestamp = currentTimestamp();
         const beaconId = [...generateRandomBytes32()];
         try {
-            await client.setWhitelistExpiration(beaconId, [...Buffer.alloc(32, 0)], timestamp);
+            await client.setWhitelistExpiration(beaconId, "", timestamp);
             ensure(false);
         } catch(e) {
             ensure(e.toString().includes("UserAddressZero"));
@@ -55,7 +55,7 @@ class WithSetterRole {
     static async dataFeedIdZero(client) {
         const timestamp = currentTimestamp();
         try {
-            await client.setWhitelistExpiration([...Buffer.alloc(32, 0)], [...generateRandomBytes32()], timestamp);
+            await client.setWhitelistExpiration([...Buffer.alloc(32, 0)], generateRandomBytes32().toString(), timestamp);
             ensure(false);
         } catch(e) {
             ensure(e.toString().includes("ServiceIdZero"));

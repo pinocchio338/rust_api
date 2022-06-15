@@ -1,7 +1,7 @@
 const { ensure, generateRandomBytes32, delay } = require("../util");
 
 async function dataFeedIdToReaderToWhitelistStatus(client) {
-    const reader = [...generateRandomBytes32()];
+    const reader = generateRandomBytes32().toString();
     const beaconId = [...generateRandomBytes32()];
     await client.setIndefiniteWhitelistStatus(beaconId, reader, true);
     await client.setWhitelistExpiration(beaconId, reader, 123456);
@@ -16,7 +16,7 @@ async function dataFeedIdToReaderToWhitelistStatus(client) {
 }
 
 async function dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(client, setter) {
-    const reader = [...generateRandomBytes32()];
+    const reader = generateRandomBytes32().toString();
     const beaconId = [...generateRandomBytes32()];
 
     let r = await client.dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(
