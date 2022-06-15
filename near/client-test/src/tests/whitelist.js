@@ -1,4 +1,4 @@
-const { ensure, generateRandomBytes32, bufferU64BE, delay } = require("../util");
+const { ensure, generateRandomBytes32, delay } = require("../util");
 
 async function dataFeedIdToReaderToWhitelistStatus(client) {
     const reader = [...generateRandomBytes32()];
@@ -36,7 +36,6 @@ async function dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(client, set
     );
     ensure(r);
 }
-
 
 module.exports = { 
   dataFeedIdToReaderToWhitelistStatus, dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus

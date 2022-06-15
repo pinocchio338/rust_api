@@ -1,5 +1,3 @@
-// use api3_common::{DataPoint, Int, Zero};
-
 use api3_common::abi::{Int, U256};
 use api3_common::{Bytes32, DataPoint, Zero};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};

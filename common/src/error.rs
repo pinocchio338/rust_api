@@ -1,7 +1,6 @@
-use std::fmt::Debug;
+use std::fmt::{Debug};
 use thiserror::Error;
 
-//TODO: copy the exact error messages from the original solidity code
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("")]

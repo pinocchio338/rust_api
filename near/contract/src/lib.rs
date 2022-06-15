@@ -15,6 +15,7 @@ use api3_common::{
 };
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{collections::LookupMap, near_bindgen};
+use std::fmt::Debug;
 
 near_sdk::setup_alloc!();
 
@@ -78,7 +79,7 @@ impl DapiServer {
                 &NearAccessControlRegistry::DEFAULT_ADMIN_ROLE,
                 &msg_sender(),
             )
-            .unwrap();
+            .expect("initialization failed");
 
         self.manager = manager;
         self.initialized = true;
@@ -106,7 +107,8 @@ impl DapiServer {
             &mut self.role_membership,
             &mut self.role_admin,
         );
-        access.renounce_role(&role, &Address(who)).unwrap();
+        let r = access.renounce_role(&role, &Address(who));
+        near_check_result(r)
     }
 
     /// Revoke `role` to `who`
@@ -127,7 +129,8 @@ impl DapiServer {
             Error::NotAuthorized
         );
 
-        access.revoke_role(&role, &Address(who)).unwrap();
+        let r = access.revoke_role(&role, &Address(who));
+        near_check_result(r)
     }
 
     /// Grants `role` to `who`
@@ -149,7 +152,8 @@ impl DapiServer {
             Error::NotAuthorized
         );
 
-        access.grant_role(&role, &Address(who)).unwrap();
+        let r = access.grant_role(&role, &Address(who));
+        near_check_result(r)
     }
 
     /// Checks if `who` has `role`
@@ -193,17 +197,17 @@ impl DapiServer {
         ]);
 
         if !SignatureVerify::verify(&airnode, &message, &signature) {
-            panic!("Signature verification wrong");
+            near_sdk::env::panic("Signature verification wrong".as_ref());
         }
 
         let beacon_id = api3_common::derive_beacon_id(airnode.to_vec(), template_id);
-        process_beacon_update(
+        let r = process_beacon_update(
             &mut storage,
             beacon_id,
             Uint::from_big_endian(&timestamp),
             data,
-        )
-        .unwrap();
+        );
+        near_check_result(r)
     }
 
     /// Updates the dAPI that is specified by the beacon IDs
@@ -213,7 +217,8 @@ impl DapiServer {
     /// * `beacon_ids` Beacon IDs
     pub fn update_dapi_with_beacons(&mut self, beacon_ids: Vec<Bytes32>) -> Bytes32 {
         let mut storage = DatapointHashMap::requires_write(&mut self.data_points);
-        api3_common::update_dapi_with_beacons(&mut storage, &beacon_ids).unwrap()
+        let r = api3_common::update_dapi_with_beacons(&mut storage, &beacon_ids);
+        near_check_result(r)
     }
 
     /// Updates a dAPI using data signed by the respective Airnodes
@@ -238,7 +243,7 @@ impl DapiServer {
         let mut storage = DatapointHashMap::requires_write(&mut self.data_points);
         let clock = NearClock::new(nanoseconds_to_seconds(near_sdk::env::block_timestamp()));
 
-        api3_common::update_dapi_with_signed_data::<_, SignatureVerify, _>(
+        let r = api3_common::update_dapi_with_signed_data::<_, SignatureVerify, _>(
             &mut storage,
             &clock,
             airnodes,
@@ -246,8 +251,8 @@ impl DapiServer {
             timestamps,
             data,
             signatures,
-        )
-        .unwrap()
+        );
+        near_check_result(r)
     }
 
     /// Sets the data point ID the name points to.
@@ -268,7 +273,8 @@ impl DapiServer {
             &self.role_membership,
             &self.role_admin,
         );
-        api3_common::set_name(name, datapoint_id, &msg_sender(), &access, &mut storage).unwrap()
+        let r = api3_common::set_name(name, datapoint_id, &msg_sender(), &access, &mut storage);
+        near_check_result(r)
     }
 
     /// Returns the data point ID the name is set to
@@ -319,7 +325,7 @@ impl DapiServer {
             &self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
         );
 
-        api3_common::read_with_data_point_id(
+        let r = api3_common::read_with_data_point_id(
             &data_point_id,
             &msg_sender(),
             &storage,
@@ -330,8 +336,8 @@ impl DapiServer {
             let mut v = [0u8; 32];
             a.to_big_endian(&mut v);
             (v, n)
-        })
-        .unwrap()
+        });
+        near_check_result(r)
     }
 
     /// Reads the data point with name
@@ -355,13 +361,13 @@ impl DapiServer {
             &self.service_id_to_user_to_whitelist_status,
             &self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
         );
-        api3_common::read_with_name(name, &msg_sender(), &dp_s, &nh_s, &access, &whitelist)
+        let r = api3_common::read_with_name(name, &msg_sender(), &dp_s, &nh_s, &access, &whitelist)
             .map(|(a, n)| {
                 let mut v = [0u8; 32];
                 a.to_big_endian(&mut v);
                 (v, n)
-            })
-            .unwrap()
+            });
+        near_check_result(r)
     }
 
     /// Returns if a reader can read the data point
@@ -605,4 +611,12 @@ impl DapiServer {
 
 fn nanoseconds_to_seconds(nano: u64) -> u32 {
     (nano / (1e9 as u64)) as u32
+}
+
+fn near_check_result<T: Debug>(r: Result<T, Error>) -> T {
+    if r.is_ok() {
+        r.unwrap()
+    } else {
+        near_sdk::env::panic((&format!("Invalid request: {:?}", r.unwrap_err())).as_ref())
+    }
 }
