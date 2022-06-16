@@ -5,7 +5,8 @@ This is the repo for RUST implementation of API3's Beacon Server
 Common package used for all the subsequent chain implementations.
 To run all test
 ```
-cargo test --all
+cd common
+cargo test
 ```
 
 # Solana
