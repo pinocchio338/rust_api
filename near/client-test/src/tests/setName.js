@@ -3,6 +3,7 @@ const { ensure, array_equals } = require("../util");
 async function dAPINameZero(client) {
   try {
     await client.setDapiName(Buffer.alloc(32, 0), Buffer.alloc(32, 0));
+    ensure(false);
   } catch(e) {
     ensure(e.toString().includes("InvalidData"));
   }
@@ -22,6 +23,7 @@ async function setsDAPIName(client, name, datapointId) {
 async function senderNotNameSetter(client, name, beaconId) {
   try {
     await client.setDapiName(name, beaconId);
+    ensure(false);
   } catch(e) {
     ensure(e.toString().includes("AccessDenied"));
   }

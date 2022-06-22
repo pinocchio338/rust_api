@@ -25,6 +25,7 @@ async function dataNotFresherThanBeacon(client, signer, airnodeAddress, template
     const [data, signature] = await encodeAndSignData(123, templateId, timestamp, signer);
     try {
       await client.updateBeaconWithSignedData(airnodeAddress, templateId, timestamp, data, signature);
+      ensure(false);
     } catch (e) {
       expect(e.toString().includes("FulfillmentOlderThanBeacon"))
     }
@@ -37,6 +38,7 @@ async function dataLengthNotCorrect(client, signer, airnodeAddress, templateId) 
     const signature = await signer.sign(prepareMessage(templateId, timestamp, data));
     try {
         await client.updateBeaconWithSignedData(airnodeAddress, templateId, timestamp, data, signature);
+        ensure(false);
     } catch (e) {
         expect(e.toString().includes("InvalidDataLength"))
     }
@@ -47,6 +49,7 @@ async function timestampNotValid(client, signer, airnodeAddress, templateId) {
   const [data, signature] = await encodeAndSignData(123, templateId, timestamp, signer);
   try {
     await client.updateBeaconWithSignedData(airnodeAddress, templateId, timestamp, data, signature);
+    ensure(false);
   } catch (e) {
     expect(e.toString().includes("InvalidTimestamp"))
   }
@@ -57,8 +60,9 @@ async function signatureNotValid(client, signer, airnodeAddress, templateId) {
   const [data, ] = await encodeAndSignData(123, templateId, timestamp, signer);
   try {
     await client.updateBeaconWithSignedData(airnodeAddress, templateId, timestamp, data, Buffer.allocUnsafe(32));
+    ensure(false);
   } catch (e) {
-    expect(e.toString().includes("InvalidSignature"))
+    expect(e.toString().includes("InvalidSignature"));
   }
 }
 

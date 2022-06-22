@@ -55,6 +55,7 @@ async function setterHasIndefiniteWhitelisterRole(client, listerClient, listerAc
             reader,
             listerAccount
         );
+        ensure(false);
     } catch(e) {
         ensure(e.toString().includes("SetterCanSetIndefiniteStatus"));
     }
