@@ -47,6 +47,7 @@ class WithExtenderRole {
 
         try {
             await client.extendWhitelistExpiration(beaconId, reader, 0);
+            ensure(false);
         } catch(e) {
             ensure(e.toString().includes("DoesNotExtendExpiration"));
         }

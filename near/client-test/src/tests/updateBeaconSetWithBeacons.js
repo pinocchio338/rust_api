@@ -18,6 +18,7 @@ async function updatedValueOutdated(client, beaconIds, expectedId) {
 async function lessThanTwoBeacons(client) {
     try {
       await client.updateBeaconSetWithBeacons([]);
+      ensure(false);
     } catch (e) {
       ensure(e.toString().includes("LessThanTwoBeacons"));
     }

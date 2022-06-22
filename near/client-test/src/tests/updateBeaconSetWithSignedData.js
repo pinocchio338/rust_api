@@ -94,6 +94,7 @@ async function lengthNotCorrect(client, signer, airnodeAddress, beaconSetTemplat
       [[], [...data]],
       [[], [...signature.signature]]
     );
+    ensure(false);
   } catch(e) {
     ensure(e.toString().includes("InvalidDataLength"));
   }
@@ -112,6 +113,7 @@ async function notAllSignaturesValid(client, signer, airnodeAddress, beaconSetTe
       [[], [...data]],
       [[], [...Buffer.alloc(64)]]
     );
+    ensure(false);
   } catch (e) {
     ensure(e.toString().includes("InvalidSignature"));
   } 
@@ -126,6 +128,7 @@ async function lessThanTwoBeacons(client) {
         [[]],
         [[]]
       );
+      ensure(false);
     } catch (e) {
       ensure(e.toString().includes("LessThanTwoBeacons"));
     }
@@ -140,6 +143,7 @@ async function parameterLengthMismatch(client, airnodeAddress, beaconSetTemplate
       [[]],
       [[]]
     );
+    ensure(false);
   } catch (e) {
     ensure(e.toString().includes("ParameterLengthMismatch"));
   }
