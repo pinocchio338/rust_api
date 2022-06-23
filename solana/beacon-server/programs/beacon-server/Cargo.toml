@@ -1,6 +1,6 @@
 [package]
 name = "beacon-server"
-version = "0.1.0"
+version = "0.0.1"
 description = "Created with Anchor"
 edition = "2021"
 
@@ -17,5 +17,5 @@ default = []
 
 [dependencies]
 anchor-lang = { version = "0.23.0", features = ["init-if-needed"] }
-api3-common = { path = "../../../../common", features = ["dummy"] }
+api3-common = { version = "0.0.1", path = "../../../../common", features = ["dummy"] }
 hex = "0.4.3"
