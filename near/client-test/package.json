@@ -1,11 +1,11 @@
 {
-  "name": "api3-contracts",
-  "description": "Counter Smart Contract\n\nThis project contains implementation of counter backed by blockchain, written in Rust.",
+  "name": "api3-near-client",
+  "description": "",
   "version": "0.0.1",
-  "license": "(MIT AND Apache-2.0)",
+  "license": "MIT",
   "type":"module",
   "scripts": {
-    "jest": "jest"
+    "test": "NEAR_NO_LOGS=true jest --runInBand"
   },
   "devDependencies": {
     "@types/jest": "^27.5.0",
@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "ethers": "^5.6.5",
-    "near-api-js": "^0.43.1",
+    "near-api-js": "^0.45.1",
     "regenerator-runtime": "^0.13.9",
     "tweetnacl": "^1.0.3"
   }

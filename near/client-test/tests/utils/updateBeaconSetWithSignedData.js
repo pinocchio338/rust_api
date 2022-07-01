@@ -1,8 +1,7 @@
-const ethers = require("ethers");
 const { 
-  toBuffer, ensure, currentTimestamp, bufferU64BE, array_equals, deriveBeaconId,
+  toBuffer, currentTimestamp, bufferU64BE, deriveBeaconId,
   encodeAndSignData, delay, encodeData, keccak256Packed, deriveDApiId
-} = require("../util");
+} = require("../../src/util");
 
 async function updatesBeaconSetWithSignedData(client, signer, airnodeAddress, beaconSetTemplateIds, readerClient) {
     let timestamp = currentTimestamp();
@@ -31,10 +30,8 @@ async function updatesBeaconSetWithSignedData(client, signer, airnodeAddress, be
     );
 
     const beacon = await readerClient.readDataFeedWithId([...deriveDApiId(beaconIds)]);
-    ensure(
-      array_equals(beacon.value, [...encodeData(d2)])
-    );
-    ensure(beacon.timestamp === timestamp);
+    expect(beacon.value).toEqual([...encodeData(d2)])
+    expect(beacon.timestamp).toEqual(timestamp)
 }
 
 async function updatedSetValueOutdated(client, signer, airnodeAddress, beaconSetTemplateIds) {
@@ -60,18 +57,13 @@ async function updatedSetValueOutdated(client, signer, airnodeAddress, beaconSet
 
     [data1, signature1] = await encodeAndSignData(105, beaconSetTemplateIds[1], timestamp-5, signer);
     [data2, signature2] = await encodeAndSignData(110, beaconSetTemplateIds[2], timestamp-5, signer);
-
-    try {
-      await client.updateBeaconSetWithSignedData(
-        [airnodeAddress, airnodeAddress, airnodeAddress],
-        beaconSetTemplateIds,
-        [0, timestamp-5, timestamp-5],
-        [[], [...data1], [...data2]],
-        [[], [...signature1], [...signature2]]
-      );
-    } catch (e) {
-      ensure(e.toString().includes("UpdatedValueOutdated"));
-    }
+    await expect(client.updateBeaconSetWithSignedData(
+      [airnodeAddress, airnodeAddress, airnodeAddress],
+      beaconSetTemplateIds,
+      [0, timestamp-5, timestamp-5],
+      [[], [...data1], [...data2]],
+      [[], [...signature1], [...signature2]]
+    )).rejects.toThrow("UpdatedValueOutdated")
 }
 
 async function lengthNotCorrect(client, signer, airnodeAddress, beaconSetTemplateIds) {
@@ -85,68 +77,46 @@ async function lengthNotCorrect(client, signer, airnodeAddress, beaconSetTemplat
     [bufferedTemplate, bufferedTimestamp, data]
   );
   const signature = await signer.sign(message);
-
-  try {
-    await client.updateBeaconSetWithSignedData(
-      [airnodeAddress, airnodeAddress],
-      [beaconSetTemplateIds[0], beaconSetTemplateIds[1]],
-      [0, timestamp],
-      [[], [...data]],
-      [[], [...signature.signature]]
-    );
-    ensure(false);
-  } catch(e) {
-    ensure(e.toString().includes("InvalidDataLength"));
-  }
+  await expect(client.updateBeaconSetWithSignedData(
+    [airnodeAddress, airnodeAddress],
+    [beaconSetTemplateIds[0], beaconSetTemplateIds[1]],
+    [0, timestamp],
+    [[], [...data]],
+    [[], [...signature.signature]]
+  )).rejects.toThrow("InvalidDataLength")
 }
 
 async function notAllSignaturesValid(client, signer, airnodeAddress, beaconSetTemplateIds) {
   const timestamp = currentTimestamp();
 
   const data = Buffer.alloc(21, 0);
-  
-  try {
-    await client.updateBeaconSetWithSignedData(
-      [airnodeAddress, airnodeAddress],
-      [beaconSetTemplateIds[0], beaconSetTemplateIds[1]],
-      [0, timestamp],
-      [[], [...data]],
-      [[], [...Buffer.alloc(64)]]
-    );
-    ensure(false);
-  } catch (e) {
-    ensure(e.toString().includes("InvalidSignature"));
-  } 
+  await expect(client.updateBeaconSetWithSignedData(
+    [airnodeAddress, airnodeAddress],
+    [beaconSetTemplateIds[0], beaconSetTemplateIds[1]],
+    [0, timestamp],
+    [[], [...data]],
+    [[], [...Buffer.alloc(64)]]
+  )).rejects.toThrow("InvalidSignature") 
 }
 
 async function lessThanTwoBeacons(client) {
-    try {
-      await client.updateBeaconSetWithSignedData(
-        [airnodeAddress],
-        [beaconSetTemplateIds[0]],
-        [0],
-        [[]],
-        [[]]
-      );
-      ensure(false);
-    } catch (e) {
-      ensure(e.toString().includes("LessThanTwoBeacons"));
-    }
+  await expect(client.updateBeaconSetWithSignedData(
+    [airnodeAddress],
+    [beaconSetTemplateIds[0]],
+    [0],
+    [[]],
+    [[]]
+  )).rejects.toThrow("LessThanTwoBeacons")
 }
 
 async function parameterLengthMismatch(client, airnodeAddress, beaconSetTemplateIds) {
-  try {
-    await client.updateBeaconSetWithSignedData(
-      [airnodeAddress],
-      [beaconSetTemplateIds[0]],
-      [0, 123],
-      [[]],
-      [[]]
-    );
-    ensure(false);
-  } catch (e) {
-    ensure(e.toString().includes("ParameterLengthMismatch"));
-  }
+  await expect(client.updateBeaconSetWithSignedData(
+    [airnodeAddress],
+    [beaconSetTemplateIds[0]],
+    [0, 123],
+    [[]],
+    [[]]
+  )).rejects.toThrow("ParameterLengthMismatch")
 }
 
 module.exports = { 

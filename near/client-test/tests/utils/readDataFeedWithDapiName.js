@@ -1,24 +1,22 @@
-const { ensure, generateRandomBytes32, delay, array_equals, keccak256Packed } = require("../util");
+const { keccak256Packed } = require("../../src/util");
 
 async function readerWhitelistedReadsByName(client, name, reader, userClient, expected) {
     const datapoint = keccak256Packed(['bytes32'], [name]);
     await client.setIndefiniteWhitelistStatus(datapoint, reader, true);
-    await delay(1000);
 
     const r = await userClient.readDataFeedWithDapiName([...name]);
-    ensure(array_equals(r.value, expected.value));
-    ensure(r.timestamp, expected.timestamp);
+    expect(r.value).toEqual(expected.value);
+    expect(r.timestamp).toEqual(expected.timestamp);
 
     await client.setIndefiniteWhitelistStatus(datapoint, reader, true);
 }
 
 async function unlimitedReaderReadsWithName(client, name, reader, role, userClient, expected) {
     await client.grantRole(role, reader);
-    await delay(1000);
 
     const r = await userClient.readDataFeedWithDapiName([...name]);
-    ensure(array_equals(r.value, expected.value));
-    ensure(r.timestamp, expected.timestamp);
+    expect(r.value).toEqual(expected.value);
+    expect(r.timestamp).toEqual(expected.timestamp);
 
     await client.revokeRole(role, reader);
 }
@@ -27,13 +25,7 @@ async function readerNotPermittedWithName(client, name, userClient, role, userAc
     await client.revokeRole(role, userAccount);
     const datapoint = keccak256Packed(['bytes32'], [name]);
     await client.setIndefiniteWhitelistStatus(datapoint, userAccount, false);
-    await delay(1000);
-    try {
-        await userClient.readDataFeedWithDapiName([...datapoint]);
-        ensure(false);
-    } catch (e) {
-        ensure(e.toString().includes("AccessDenied"));
-    }
+    await expect(userClient.readDataFeedWithDapiName([...datapoint])).rejects.toThrow("AccessDenied")
 }
 
 module.exports = { 

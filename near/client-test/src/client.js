@@ -24,7 +24,7 @@ class DapiServer {
     }
 
     async readDataFeedWithId(dataPointId) {
-        const data = await this.contract.read_with_data_point_id( { data_point_id: [...dataPointId] });
+        const data = await this.contract.read_with_data_point_id( { args: {data_point_id: [...dataPointId]} });
         return {
             value: data[0],
             timestamp: data[1]
@@ -32,7 +32,7 @@ class DapiServer {
     }
 
     async readDataFeedWithDapiName(name) {
-        const data = await this.contract.read_with_name( { name: [...name] });
+        const data = await this.contract.read_with_name( { args: {name: [...name]} });
         return {
             value: data[0],
             timestamp: data[1]

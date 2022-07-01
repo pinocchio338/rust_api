@@ -1,10 +1,10 @@
-const { ensure, generateRandomBytes32, currentTimestamp } = require("../util");
+const { generateRandomBytes32, currentTimestamp } = require("../../src/util");
 
 
 class WithSetterRole {
     static async setup(client, userAccount, userClient) {
         const whitelistExpirationSetterRole = await client.whitelistExpirationSetterRole();
-        ensure(!(await client.hasRole(whitelistExpirationSetterRole, userAccount)));
+        await expect(client.hasRole(whitelistExpirationSetterRole, userAccount)).resolves.toBe(false);
         await WithSetterRole.cannotSetWhitelistExpiration(userClient);
         await client.grantRole(whitelistExpirationSetterRole, userAccount);
     }
@@ -25,41 +25,26 @@ class WithSetterRole {
         );
         const expected = Buffer.alloc(32, 0);
         expected.writeUint8(1, 31);
-        ensure(r[0] === timestamp);
-        expect(r[1] === [...expected]);
+        expect(r[0]).toEqual(timestamp)
+        expect(r[1]).toEqual([...expected])
     }
 
     static async cannotSetWhitelistExpiration(client) {
         const timestamp = currentTimestamp();
         const reader = generateRandomBytes32().toString();
         const beaconId = [...generateRandomBytes32()];
-        try {
-            await client.setWhitelistExpiration(beaconId, reader, timestamp);
-            ensure(false);
-        } catch (e) {
-            ensure(e.toString().includes("AccessDenied"));
-        }
+        await expect(client.setWhitelistExpiration(beaconId, reader, timestamp)).rejects.toThrow("AccessDenied")
     }
 
     static async readerZeroAddress(client) {
         const timestamp = currentTimestamp();
         const beaconId = [...generateRandomBytes32()];
-        try {
-            await client.setWhitelistExpiration(beaconId, "", timestamp);
-            ensure(false);
-        } catch(e) {
-            ensure(e.toString().includes("UserAddressZero"));
-        }
+        await expect(client.setWhitelistExpiration(beaconId, "", timestamp)).rejects.toThrow("UserAddressZero")
     }
 
     static async dataFeedIdZero(client) {
         const timestamp = currentTimestamp();
-        try {
-            await client.setWhitelistExpiration([...Buffer.alloc(32, 0)], generateRandomBytes32().toString(), timestamp);
-            ensure(false);
-        } catch(e) {
-            ensure(e.toString().includes("ServiceIdZero"));
-        }
+        await expect(client.setWhitelistExpiration([...Buffer.alloc(32, 0)], generateRandomBytes32().toString(), timestamp)).rejects.toThrow("ServiceIdZero")
     }
 }
 

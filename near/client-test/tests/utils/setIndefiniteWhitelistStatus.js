@@ -1,4 +1,4 @@
-const { ensure, generateRandomBytes32, currentTimestamp, delay, array_equals } = require("../util");
+const { generateRandomBytes32, delay } = require("../../src/util");
 
 
 class WithIndefiniteWhitelisterSetterRole {
@@ -28,45 +28,30 @@ class WithIndefiniteWhitelisterSetterRole {
         const expected = Buffer.alloc(32, 0);
         expected.writeUint8(1, 31);
 
-        ensure(r[0] === 0);
-        ensure(array_equals(r[1], [...expected]));
+        expect(r[0]).toEqual(0)
+        expect(r[1]).toEqual([...expected])
 
         const s = await client.dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(
             beaconId,
             reader,
             listerAccount
         );
-        ensure(s);
+        expect(s).toBe(true)
     }
 
     static async cannotSetIndefiniteWhitelistStatus(client) {
         const reader = generateRandomBytes32().toString();
         const beaconId = [...generateRandomBytes32()];
-        try {
-            await client.setIndefiniteWhitelistStatus(beaconId, reader, true);
-            ensure(false);
-        } catch (e) {
-            ensure(e.toString().includes("AccessDenied"));
-        }
+        await expect(client.setIndefiniteWhitelistStatus(beaconId, reader, true)).rejects.toThrow("AccessDenied")
     }
 
     static async readerZeroAddress(client) {
         const beaconId = [...generateRandomBytes32()];
-        try {
-            await client.setIndefiniteWhitelistStatus(beaconId, "", true);
-            ensure(false);
-        } catch(e) {
-            ensure(e.toString().includes("UserAddressZero"));
-        }
+        await expect(client.setIndefiniteWhitelistStatus(beaconId, "", true)).rejects.toThrow("UserAddressZero")
     }
 
     static async dataFeedIdZero(client) {
-        try {
-            await client.setIndefiniteWhitelistStatus([...Buffer.alloc(32, 0)], generateRandomBytes32().toString(), true);
-            ensure(false);
-        } catch(e) {
-            ensure(e.toString().includes("ServiceIdZero"));
-        }
+        await expect(client.setIndefiniteWhitelistStatus([...Buffer.alloc(32, 0)], generateRandomBytes32().toString(), true)).rejects.toThrow("ServiceIdZero")
     }
 }
 
