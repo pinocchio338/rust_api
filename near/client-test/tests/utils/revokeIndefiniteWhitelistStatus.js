@@ -1,4 +1,4 @@
-const { ensure, generateRandomBytes32, delay } = require("../util");
+const { ensure, generateRandomBytes32, delay } = require("../../src/util");
 
 async function revokesIndefiniteWhitelistStatus(client, listerClient, listerAccount, randomClient) {
     const reader = generateRandomBytes32().toString();
@@ -23,15 +23,15 @@ async function revokesIndefiniteWhitelistStatus(client, listerClient, listerAcco
         beaconId,
         reader
     );
-    ensure(r[0] === 0);
-    expect(r[1] === [...Buffer.alloc(32, 0)]);
+    expect(r[0]).toEqual(0)
+    expect(r[1]).toEqual([...Buffer.alloc(32, 0)])
 
     const s = await client.dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(
         beaconId,
         reader,
         listerAccount
     );
-    ensure(!s);
+    expect(s).toBe(false)
 
     await randomClient.revokeIndefiniteWhitelistStatus(
         beaconId,
@@ -49,16 +49,11 @@ async function setterHasIndefiniteWhitelisterRole(client, listerClient, listerAc
     await client.grantRole(indefiniteWhitelisterRole, listerAccount);
     await delay(1000);
     
-    try {
-        await listerClient.revokeIndefiniteWhitelistStatus(
-            beaconId,
-            reader,
-            listerAccount
-        );
-        ensure(false);
-    } catch(e) {
-        ensure(e.toString().includes("SetterCanSetIndefiniteStatus"));
-    }
+    await expect(listerClient.revokeIndefiniteWhitelistStatus(
+        beaconId,
+        reader,
+        listerAccount
+    )).rejects.toThrow("SetterCanSetIndefiniteStatus")
 }
 
 module.exports = {

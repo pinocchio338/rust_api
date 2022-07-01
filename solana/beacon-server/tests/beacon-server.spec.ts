@@ -1,4 +1,5 @@
 import * as anchor from "@project-serum/anchor";
+import {SendTransactionError} from "@solana/web3.js";
 import { expect } from "chai";
 import nacl from 'tweetnacl';
 import * as fs from "fs";
@@ -56,8 +57,8 @@ describe("beacon-server", () => {
     await provider.connection.confirmTransaction(await provider.connection.requestAirdrop(messageRelayer.publicKey, anchor.web3.LAMPORTS_PER_SOL));
   }) 
 
-  describe("updateBeaconWithSignedData", () => {
-    it("works", async () => {
+  describe("update beacon with signed data", () => {
+    it("should work - template 3", async () => {
       // 1. Airnode create the txn    
       const [airnodeSignature, airnodeTxn] = await dapiClient.newUpdateBeaconWithSignedDataTxn(
         templateId3,
@@ -71,10 +72,9 @@ describe("beacon-server", () => {
       const offlineTxn = await relayTxn(airnodeTxn, airnodeSignature, airnode3.publicKey, messageRelayer);
   
       // 3. Send transaction
-      await provider.connection.sendRawTransaction(offlineTxn);
-  
-      // wait a bit for the transaction to take effect
-      await delay(1000);
+      const signature = await provider.connection.sendRawTransaction(offlineTxn);
+
+      await provider.connection.confirmTransaction(signature)
   
       // Check test response
       const beaconId = dapiClient.deriveBeaconId(airnode3.publicKey.toBytes(), templateId3);
@@ -83,6 +83,37 @@ describe("beacon-server", () => {
       // construct expected
       expect(datapoint.value).to.deep.eq(data3);
       expect(datapoint.timestamp).to.deep.eq(timestamp3);
+    });
+
+    it("should work - template 4", async () => {
+      // Create the datapoint 4 
+      const [airnodeSignature, airnodeTxn] =  await dapiClient.newUpdateBeaconWithSignedDataTxn(
+        templateId4,
+        timestamp4,
+        data4,
+        airnode4,
+        messageRelayer.publicKey
+      );
+      const offlineTxn = await relayTxn(airnodeTxn, airnodeSignature, airnode4.publicKey, messageRelayer);
+      const signature = await provider.connection.sendRawTransaction(offlineTxn);
+  
+      // wait for the transaction to take effect
+      await provider.connection.confirmTransaction(signature)
+
+      const beaconId4 = dapiClient.deriveBeaconId(airnode4.publicKey.toBytes(), templateId4);
+      const datapoint = await dapiClient.readWithDataPointId(beaconId4);
+      expect(datapoint.value).to.deep.eq(data4);
+      expect(datapoint.timestamp).to.deep.eq(timestamp4);
+
+      // now test updateDapiWithBeacons
+      const beaconId3 = dapiClient.deriveBeaconId(airnode3.publicKey.toBytes(), templateId3);
+      const beaconIds = [beaconId3, beaconId4];
+      const dataPointId = dapiClient.deriveDapiId(beaconIds);
+      
+      await dapiClient.updateDapiWithBeacons(beaconIds, messageRelayer);
+      const dapi = await dapiClient.readWithDataPointId(dataPointId);
+      expect(dapi.timestamp).to.eq(Math.floor((timestamp3 + timestamp4) / 2));
+      expect(dapi.value).to.eq(Math.floor((data3 + data4) / 2));
     });
 
     it("overwrite old data", async () => {
@@ -101,10 +132,10 @@ describe("beacon-server", () => {
       const offlineTxn = await relayTxn(airnodeTxn, airnodeSignature, airnode3.publicKey, messageRelayer);
   
       // 3. Send transaction
-      await provider.connection.sendRawTransaction(offlineTxn);
+      const signature = await provider.connection.sendRawTransaction(offlineTxn);
   
-      // wait a bit for the transaction to take effect
-      await delay(1000);
+      // wait for the transaction to take effect
+      await provider.connection.confirmTransaction(signature)
   
       // Check test response
       const beaconId = dapiClient.deriveBeaconId(airnode3.publicKey.toBytes(), templateId3);
@@ -134,42 +165,10 @@ describe("beacon-server", () => {
       }
     });
   });
-  
-  describe("updateBeaconWithSignedData", () => {
-    it("works", async () => {
-      // Create the datapoint 4 
-      const [airnodeSignature, airnodeTxn] =  await dapiClient.newUpdateBeaconWithSignedDataTxn(
-        templateId4,
-        timestamp4,
-        data4,
-        airnode4,
-        messageRelayer.publicKey
-      );
-      const offlineTxn = await relayTxn(airnodeTxn, airnodeSignature, airnode4.publicKey, messageRelayer);
-      await provider.connection.sendRawTransaction(offlineTxn);
-  
-      // wait a bit for the transaction to take effect
-      await delay(1000);
 
-      const beaconId4 = dapiClient.deriveBeaconId(airnode4.publicKey.toBytes(), templateId4);
-      const datapoint = await dapiClient.readWithDataPointId(beaconId4);
-      expect(datapoint.value).to.deep.eq(data4);
-      expect(datapoint.timestamp).to.deep.eq(timestamp4);
 
-      // now test updateDapiWithBeacons
-      const beaconId3 = dapiClient.deriveBeaconId(airnode3.publicKey.toBytes(), templateId3);
-      const beaconIds = [beaconId3, beaconId4];
-      const dataPointId = dapiClient.deriveDapiId(beaconIds);
-      
-      await dapiClient.updateDapiWithBeacons(beaconIds, messageRelayer);
-      const dapi = await dapiClient.readWithDataPointId(dataPointId);
-      expect(dapi.timestamp).to.eq(Math.floor((timestamp3 + timestamp4) / 2));
-      expect(dapi.value).to.eq(Math.floor((data3 + data4) / 2));
-    });
-  });
-
-  describe("updateDapiWithSignedData", async () => {
-    it("works", async () => {
+  describe("update Dapi with signed data", async () => {
+    it("should work", async () => {
       // Step 1. Airnode1 create the data
       const message1 = prepareMessage(templateId1, timestamp1, data1);
       const sig1 = nacl.sign.detached(message1, airnode1.secretKey);
@@ -192,9 +191,6 @@ describe("beacon-server", () => {
         ],
         messageRelayer
       );
-  
-      // wait a bit for the transaction to take effect
-      await delay(1000);
 
       const beaconId1 = dapiClient.deriveBeaconId(airnode1.publicKey.toBytes(), templateId1);
       const beaconId2 = dapiClient.deriveBeaconId(airnode2.publicKey.toBytes(), templateId2);
@@ -229,19 +225,20 @@ describe("beacon-server", () => {
           messageRelayer
         );
         expect(false, "should not be here");
-      } catch (_) {
-        expect(true, "should fail");
+      } catch (err) {
+        expect(err).to.be.instanceOf(SendTransactionError);
+        expect(err.message).to.be.equal("failed to send transaction: Transaction precompile verification failure InvalidAccountIndex")
       }
     });
   });
 
   describe("setName", () => {
-    it("works", async () => {
+    it("should work", async () => {
       const beaconId = dapiClient.deriveBeaconId(airnode3.publicKey.toBytes(), templateId3);
 
-      await dapiClient.setName(name, beaconId, provider.wallet.publicKey);
+      const signature = await dapiClient.setName(name, beaconId, provider.wallet.publicKey);
   
-      await delay(1000);
+      await provider.connection.confirmTransaction(signature);
   
       const datapointId = await dapiClient.nameToDataPointId(name);
       expect([...beaconId]).to.deep.eq([...datapointId]);
@@ -253,7 +250,7 @@ describe("beacon-server", () => {
   });
 
   describe("deriveDApiId", () => {
-    it("works", async () => {
+    it("should work", async () => {
       const publicKey1 = [
         6,  78, 207,   9,  71, 108, 155, 104,
         161, 183, 128,  28, 210, 228,  71, 204,
@@ -281,7 +278,7 @@ describe("beacon-server", () => {
   });
 
   describe("deriveBeaconId", () => {
-    it("works", async () => {
+    it("should work", async () => {
       const publicKey = [
         6,  78, 207,   9,  71, 108, 155, 104,
         161, 183, 128,  28, 210, 228,  71, 204,

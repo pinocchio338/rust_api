@@ -1,7 +1,7 @@
 # API3-Rust
 This is the repo for RUST implementation of API3's Beacon Server
 
-# Common
+## Common
 Common package used for all the subsequent chain implementations.
 To run all test
 ```
@@ -9,21 +9,20 @@ cd common
 cargo test
 ```
 
-# Solana
-Read up on anchors: `https://project-serum.github.io/anchor/`
-To build the solana code, do the following:
+## Solana
+Read up on anchors https://book.anchor-lang.com/.
+To build the solana code, do the following in docker container (.devcontainer/Solana-Dockerfile):
 ```
 cd solana/beacon-server
 anchor build
-
-# make sure you are not in a browser setting with 
-export BROWSER=""
 solana-keygen new
 anchor test
 ```
 
-# Near
-## Prerequisite
+Instead of docker, you can follow installation commands from docker image.
+
+## Near
+### Prerequisite
 Read up on Near from these links:
 - Get started: `https://docs.near.org/docs/develop/contracts/overview`
 - Create account: `https://docs.near.org/docs/develop/basics/create-account#creating-a-testnet-account`
@@ -35,18 +34,18 @@ After reading the above, you should be able to know:
 - How and why we need cross contract call
 - How end to end test with javascript is written and tested
 
-## Dev
+### Dev
 To setup the dev env, checkout the dockerfile in `.devcontainer/Near-Dockerfile`, build and launch the docker. Alternatively,
 we recommend you use vscode remote docker plugin, you can open this folder in remote docker, then you can have the same dev 
 env.
 Once in the docker, you can follow the subsection accordingly.
 
-### Compile
+#### Compile
 - go to the near contract folder: `cd near/contract`
 - compile: `cargo build --target wasm32-unknown-unknown --release`
 Once done you should be able to see, relative to the repo root folder, `target/wasm32-unknown-unknown/release/dapi_server.wasm`.
 
-### Create test accounts
+#### Create test accounts
 You need to create 3 accounts for testing:
 ```
 CONTRACT_ACCOUNT: the account for the dapiServer contract.
@@ -61,7 +60,7 @@ export ADMIN_ACCOUNT=mocha-test1.testnet
 export USER_ACCOUNT=user-test1.testnet
 ```
 
-### Login on CLI
+#### Login on CLI
 Once the acconts are created, you need to login from CLI:
 ```
 near login --account-id ${CONTRACT_ACCOUNT}
@@ -69,13 +68,14 @@ near login --account-id ${ADMIN_ACCOUNT}
 near login --account-id ${USER_ACCOUNT}
 ```
 
-### Deploy the contracts
+#### Deploy the contracts
 In the root folder, deploy the `api3-contract` using:
 ```
-near deploy --wasmFile ./target/wasm32-unknown-unknown/release/dapi_server.wasm --contractName=${CONTRACT_ACCOUNT} --keyPath=/home/dev/.near-credentials/testnet/${CONTRACT_ACCOUNT}.json
+near deploy --wasmFile ./target/wasm32-unknown-unknown/release/dapi_server.wasm --accountId=${CONTRACT_ACCOUNT}
 ```
+If you get error on not enough balance. Run `near dev-deploy ...` and delete generated dev-xxxx account in favour of your account: `near delete dev-xxxx ${CONTRACT_ACCOUNT}`
 
-### Run tests
+#### Run tests
 The tests are located in `near/client-test`, the `main` for tests is `near/client-test/src/test.js`.
 Locate the DEFINITION of `isInitialized`, it tells the program whether to initialize the contract. If you are running the first time, 
 ensure this is `false`, else you can mark this as `true`.
@@ -87,5 +87,5 @@ Please note that the tests will take around 10 minutes to finish.
 When the contract reverts 
 execution, the near client would log the contract execution error with `console.warn`. The tests would capture the exceptions thrown and check the expected error name appears in the error message. If you want to disable the warn logs, use `yarn jest --silent`.
 
-### Clean up
+#### Clean up
 To clean up, just delete the accounts using `near delete ... ...`. See `https://docs.near.org/docs/tools/near-cli#near-delete`.

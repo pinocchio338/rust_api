@@ -168,7 +168,7 @@ export class DapiClient {
     public async setName(name: Buffer, datapointId: Buffer, sender: anchor.web3.PublicKey) {
       const nameHash = keccak256Packed(["bytes32"], [name]);
       const nameHashPDA = await deriveNameHashPDA(nameHash, this.program.programId);
-      await this.program.rpc.setName(
+      return await this.program.rpc.setName(
         nameHash,
         name,
         datapointId,

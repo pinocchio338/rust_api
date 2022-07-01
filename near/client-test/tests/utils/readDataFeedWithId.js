@@ -1,4 +1,4 @@
-const { ensure, generateRandomBytes32, delay } = require("../util");
+const { generateRandomBytes32, delay } = require("../../src/util");
 
 async function readerWhitelistedReads(client, reader, userClient) {
     const datapoint = generateRandomBytes32();
@@ -31,12 +31,8 @@ async function readerNotPermitted(client, userClient, role, userAccount) {
     const datapoint = generateRandomBytes32();
     await client.setIndefiniteWhitelistStatus(datapoint, userAccount, false);
     await delay(1000);
-    try {
-        await userClient.readDataFeedWithId([...datapoint]);
-        ensure(false);
-    } catch (e) {
-        ensure(e.toString().includes("AccessDenied"));
-    }
+
+    await expect(userClient.readDataFeedWithId([...datapoint])).rejects.toThrow("AccessDenied")
 }
 
 module.exports = { 

@@ -1,36 +1,34 @@
-const { DapiServer } = require("./client");
+const { DapiServer } = require("../src/client");
 const { 
   updateBeacon, dataNotFresherThanBeacon, dataLengthNotCorrect,
   timestampNotValid, signatureNotValid
-} = require("./tests/updateBeaconWithSignedData");
+} = require("./utils/updateBeaconWithSignedData");
 const { 
   updatesBeaconSet, lessThanTwoBeacons
 
-} = require("./tests/updateBeaconSetWithBeacons");
+} = require("./utils/updateBeaconSetWithBeacons");
 const { 
   senderNotNameSetter, setsDAPIName, dAPINameZero
-} = require("./tests/setName");
+} = require("./utils/setName");
 const {
   derivesBeaconId, templateIdZero, airnodeZero, derivesBeaconSetId,
-} = require("./tests/derive");
-const { generateRandomBytes32, bufferU64BE, toBuffer, currentTimestamp, deriveBeaconId, deriveDApiId, delay, encodeAndSignData, encodeData } = require("./util");
+} = require("./utils/derive");
+const { generateRandomBytes32, toBuffer, currentTimestamp, deriveBeaconId, deriveDApiId, delay, encodeAndSignData, encodeData } = require("../src/util");
 const fs = require("fs");
 const ethers = require("ethers");
 const nearAPI = require("near-api-js");
-const { connect, KeyPair, keyStores, providers } = require("near-api-js");
+const { keyStores } = require("near-api-js");
 const path = require("path");
-const { base64 } = require("ethers/lib/utils");
-const { assert } = require("console");
-const { updatesBeaconSetWithSignedData, updatedSetValueOutdated, lengthNotCorrect, notAllSignaturesValid, parameterLengthMismatch } = require("./tests/updateBeaconSetWithSignedData");
-const { readerZeroAddress, readerNotWhitelisted, readerWhitelisted, readerUnlimitedReaderRole } = require("./tests/readerCanReadDataFeed");
-const { dataFeedIdToReaderToWhitelistStatus, dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus } = require("./tests/whitelist");
-const { revokeRole, renounceRole } = require("./tests/role");
-const { WithExtenderRole } = require("./tests/extendWhitelistExpiration");
-const { WithSetterRole } = require("./tests/setWhitelistExpiration");
-const { WithIndefiniteWhitelisterSetterRole } = require("./tests/setIndefiniteWhitelistStatus");
-const { revokesIndefiniteWhitelistStatus, setterHasIndefiniteWhitelisterRole } = require("./tests/revokeIndefiniteWhitelistStatus");
-const { readerNotPermitted, readerUnlimitedReaderReads, readerWhitelistedReads } = require("./tests/readDataFeedWithId");
-const { readerWhitelistedReadsByName, unlimitedReaderReadsWithName, readerNotPermittedWithName } = require("./tests/readDataFeedWithDapiName");
+const { updatesBeaconSetWithSignedData, updatedSetValueOutdated, lengthNotCorrect, notAllSignaturesValid, parameterLengthMismatch } = require("./utils/updateBeaconSetWithSignedData");
+const { readerZeroAddress, readerNotWhitelisted, readerWhitelisted, readerUnlimitedReaderRole } = require("./utils/readerCanReadDataFeed");
+const { dataFeedIdToReaderToWhitelistStatus, dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus } = require("./utils/whitelist");
+const { revokeRole, renounceRole } = require("./utils/role");
+const { WithExtenderRole } = require("./utils/extendWhitelistExpiration");
+const { WithSetterRole } = require("./utils/setWhitelistExpiration");
+const { WithIndefiniteWhitelisterSetterRole } = require("./utils/setIndefiniteWhitelistStatus");
+const { revokesIndefiniteWhitelistStatus, setterHasIndefiniteWhitelisterRole } = require("./utils/revokeIndefiniteWhitelistStatus");
+const { readerNotPermitted, readerUnlimitedReaderReads, readerWhitelistedReads } = require("./utils/readDataFeedWithId");
+const { readerWhitelistedReadsByName, unlimitedReaderReadsWithName, readerNotPermittedWithName } = require("./utils/readDataFeedWithDapiName");
 const homedir = require("os").homedir();
 const CREDENTIALS_DIR = ".near-credentials";
 const credentialsPath = path.join(homedir, CREDENTIALS_DIR);
@@ -39,7 +37,7 @@ const keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsPath);
 const contractAccount = process.env.CONTRACT_ACCOUNT;
 const adminAccount = process.env.ADMIN_ACCOUNT;
 const userAccount = process.env.USER_ACCOUNT;
-const crossContractAccount = process.env.CROSS_CONTRACT_ACCOUNT;
+
 // If you are running the first time, ensure this is false
 // else make this true
 const isInitialized = true;
@@ -57,7 +55,6 @@ describe('Token', function () {
   let contract;
   let userContract;
   let near;
-  let crossContract;
 
   const templateId = generateRandomBytes32();
   const beaconSetTemplateIds = [
@@ -75,11 +72,9 @@ describe('Token', function () {
 
   let keyPair;
   beforeAll(async function () {
-    console.log("template id", templateId);
-    console.log("beaconSetTemplateIds", beaconSetTemplateIds);
-
     near = await nearAPI.connect(config);
-    contract = await near.loadContract(contractAccount, {
+    const admin = await near.account(adminAccount);
+    contract = new nearAPI.Contract(admin, contractAccount, {
       viewMethods: [
         'has_role',
         'roles',
@@ -110,11 +105,10 @@ describe('Token', function () {
         'extend_whitelist_expiration',
         'revoke_indefinite_whitelist_status',
       ],
-      sender: adminAccount
     });
     client = new DapiServer(contract);
-
-    userContract = await near.loadContract(contractAccount, {
+    const user = await near.account(userAccount);
+    userContract = new nearAPI.Contract(user, contractAccount, {
       viewMethods: [
         'roles',
         'name_to_data_point_id',
@@ -128,6 +122,7 @@ describe('Token', function () {
         'indefinite_whitelister_role'
       ],
       changeMethods: [
+        'get_data_point',
         'read_with_data_point_id',
         'read_with_name',
         'set_indefinite_whitelist_status',
@@ -135,24 +130,10 @@ describe('Token', function () {
         'extend_whitelist_expiration',
         'revoke_indefinite_whitelist_status'
       ],
-      sender: userAccount
     });
     userClient = new DapiServer(userContract);
 
-    crossContract = await near.loadContract(crossContractAccount, {
-      viewMethods: ['hello_world', 'my_callback'],
-      changeMethods: ['get_datapoint'],
-      sender: adminAccount
-    });
-
-    userContract = await near.loadContract(contractAccount, {
-      viewMethods: [],
-      changeMethods: ['get_data_point'],
-      sender: userAccount
-    });
-
-    const account = await near.account(adminAccount);
-    const key = `${account.connection.signer.keyStore.keyDir}/testnet/${account.accountId}.json`;
+    const key = `${admin.connection.signer.keyStore.keyDir}/testnet/${admin.accountId}.json`;
     const data = JSON.parse(fs.readFileSync(key));
     keyPair = nearAPI.KeyPair.fromString(data.private_key);
 
@@ -164,14 +145,10 @@ describe('Token', function () {
           args: { }
         }
       );
-      console.log("initialized contract");
-      // just wait a bit for the effects to take place
-      await delay(1000);
 
       const reader = userAccount;
       const unlimitedReaderRole = (await contract.roles())[0];
       await client.grantRole([...unlimitedReaderRole], reader);
-      await delay(1000);
     }
   });
 
@@ -184,7 +161,6 @@ describe('Token', function () {
         roles[0],
         userAccount
       );
-      await delay(1000);
     });
 
     afterAll(async () => {
@@ -192,12 +168,15 @@ describe('Token', function () {
         roles[0],
         userAccount
       );
-      await delay(1000);
     })
 
     it('updateBeacon', async function () {
       const timestamp = currentTimestamp() + 1;
-      await updateBeacon(client, keyPair, keyPair.getPublicKey().data, templateId, 123, timestamp, userClient);
+      const beacon = await updateBeacon(client, keyPair, keyPair.getPublicKey().data, templateId, 123, timestamp, userClient);
+      ensure(
+        array_equals(beacon.value, [...encodeData(value)])
+      );
+      ensure(beacon.timestamp === timestamp);
     });
 
     it('dataNotFresherThanBeacon', async function () {
@@ -226,7 +205,6 @@ describe('Token', function () {
         roles[0],
         userAccount
       );
-      await delay(1000);
     });
 
     afterAll(async () => {
@@ -234,7 +212,6 @@ describe('Token', function () {
         roles[0],
         userAccount
       );
-      await delay(1000);
     })
 
     it('updatesBeaconSet', async function () {
@@ -272,7 +249,6 @@ describe('Token', function () {
         roles[0],
         userAccount
       );
-      await delay(1000);
     });
 
     afterAll(async () => {
@@ -280,7 +256,6 @@ describe('Token', function () {
         roles[0],
         userAccount
       );
-      await delay(1000);
     });
 
     it('updatesBeaconSetWithSignedData', async function () {
@@ -291,7 +266,7 @@ describe('Token', function () {
       await updatedSetValueOutdated(client, keyPair, keyPair.getPublicKey().data, beaconSetTemplateIds);
     });
 
-    it('dataValueExceedingRange', async function () {
+    it.skip('dataValueExceedingRange', async function () {
       // TODO: we are using U256 internally, not sure if this is still needed  
     });
 
@@ -401,7 +376,6 @@ describe('Token', function () {
     describe('Sender has whitelist expiration extender role', function () {
       beforeAll(async function () {
         await WithExtenderRole.setup(client, userAccount, userClient);
-        console.log("setup done for extendWhitelistExpiration");
       });
 
       it('extendsWhitelistExpiration', async function () {
@@ -422,7 +396,6 @@ describe('Token', function () {
 
       afterAll(async function () {
         await WithExtenderRole.tearDown(client, userAccount);
-        console.log("tear down done for extendWhitelistExpiration");
       });
     });
 
@@ -449,7 +422,6 @@ describe('Token', function () {
     describe('Sender has whitelist expiration setter role', function () {
       beforeAll(async function () {
         await WithSetterRole.setup(client, userAccount, userClient);
-        console.log("setup done for setWhitelistExpiration");
       });
 
       it('setsWhitelistExpiration', async function () {
@@ -466,7 +438,6 @@ describe('Token', function () {
 
       afterAll(async function () {
         await WithSetterRole.tearDown(client, userAccount);
-        console.log("tear down done for extendWhitelistExpiration");
       });
     });
 
@@ -489,7 +460,6 @@ describe('Token', function () {
     describe('Sender has whitelist expiration setter role', function () {
       beforeAll(async function () {
         await WithIndefiniteWhitelisterSetterRole.setup(client, userAccount, userClient);
-        console.log("setup done for setIndefiniteWhitelistStatus");
       });
 
       it('setIndefiniteWhitelistStatus', async function () {
@@ -509,7 +479,6 @@ describe('Token', function () {
 
       afterAll(async function () {
         await WithIndefiniteWhitelisterSetterRole.tearDown(client, userAccount);
-        console.log("tear down done for extendWhitelistExpiration");
       });
     });
 
@@ -611,10 +580,8 @@ describe('Token', function () {
         roles[1],
         adminAccount
       );
-      await delay(1000);
       name = Buffer.from(ethers.utils.formatBytes32String('My dAPI 2').substring(2), "hex");
       await setsDAPIName(client, name, beaconId);
-      console.log("setup done for read with name");
     });
 
     it('readerWhitelistedReadsByName', async function () {
@@ -653,7 +620,6 @@ describe('Token', function () {
         roles[1],
         adminAccount
       );
-      console.log("tear down done for read with name");
     });
   });
 });

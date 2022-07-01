@@ -1,4 +1,4 @@
-const { ensure, generateRandomBytes32, delay } = require("../util");
+const { generateRandomBytes32, delay } = require("../../src/util");
 
 async function dataFeedIdToReaderToWhitelistStatus(client) {
     const reader = generateRandomBytes32().toString();
@@ -11,8 +11,8 @@ async function dataFeedIdToReaderToWhitelistStatus(client) {
     );
     const expected = Buffer.alloc(32, 0);
     expected.writeUint8(1, 31);
-    ensure(r[0] === 123456);
-    expect(r[1] === [...expected]);
+    expect(r[0]).toEqual(123456)
+    expect(r[1]).toEqual([...expected])
 }
 
 async function dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(client, setter) {
@@ -24,7 +24,7 @@ async function dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(client, set
       reader,
       setter
     );
-    ensure(!r);
+    expect(r).toEqual(false)
 
     await client.setIndefiniteWhitelistStatus(beaconId, reader, true);
     await delay(1000);
@@ -34,7 +34,7 @@ async function dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus(client, set
       reader,
       setter
     );
-    ensure(r);
+    expect(r).toEqual(true)
 }
 
 module.exports = { 

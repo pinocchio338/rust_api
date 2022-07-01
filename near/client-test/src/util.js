@@ -1,5 +1,4 @@
 const ethers = require("ethers");
-const { ErrorContext } = require("near-api-js/lib/providers");
 
 function deriveBeaconId(airnodeKey, templateId) {
     return keccak256Packed(["bytes", "bytes32"], [airnodeKey, templateId]);
@@ -9,6 +8,8 @@ function encodeData(decodedData) {
     const hex = ethers.utils.defaultAbiCoder.encode(['int256'], [decodedData]);
     return Buffer.from(hex.substr(2), "hex");
 }
+
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 function prepareMessage(
     templateId,
@@ -74,24 +75,8 @@ function deriveDApiId(beaconIds) {
     return keccak256Packed(types, beaconIds);
 }
 
-function ensure(condition) {
-    if (!condition) {
-        throw new Error("failed test");
-    }
-}
-
-function array_equals(a, b) {
-    if (a.length !== b.length) { return false; }
-    for (let i = 0; i < a.length; i++) {
-        if (a[i] !== b[i]) { return false; }
-    }
-    return true;
-}
-
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
-
 module.exports = {
     keccak256Packed, currentTimestamp, encodeData, prepareMessage,
     generateRandomBytes32, toBuffer, bufferU64BE, encodeAndSignData,
-    deriveBeaconId, deriveDApiId, ensure, array_equals, delay
+    deriveBeaconId, deriveDApiId, delay
 };
