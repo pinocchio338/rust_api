@@ -1,5 +1,5 @@
 use crate::utils::ReadWrite;
-use crate::{msg_sender, Address, near_check_result};
+use crate::{msg_sender, near_check_result, Address};
 use api3_common::abi::{Token, U256};
 use api3_common::{
     ensure, keccak_packed, AccessControlRegistry, AccessControlRegistryAdminnedWithManager,
@@ -75,7 +75,7 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> NearWhitelist<'a, Acc
         reader: &[u8],
         setter: &[u8],
     ) -> Option<bool> {
-        let key = Self::triple_hash(&data_feed_id, reader, setter);
+        let key = Self::triple_hash(data_feed_id, reader, setter);
         let indefinite = match &self.service_id_to_user_to_setter_to_indefinite_whitelist_status {
             ReadWrite::ReadOnly(m) => *m,
             ReadWrite::Write(m) => *m,
@@ -88,7 +88,7 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> NearWhitelist<'a, Acc
         data_feed_id: &Bytes32,
         reader: &[u8],
     ) -> Option<(u64, Bytes32)> {
-        let key = Self::double_hash(&data_feed_id, reader);
+        let key = Self::double_hash(data_feed_id, reader);
         let s = match &self.service_id_to_user_to_whitelist_status {
             ReadWrite::ReadOnly(s) => *s,
             ReadWrite::Write(s) => *s,
@@ -148,11 +148,10 @@ impl<'a, Access: AccessControlRegistry<Address = Address>> Whitelist for NearWhi
         let hash = Self::double_hash(service_id, &user.0);
 
         let mut whitelist_status = (*m).remove(&hash).unwrap_or_default();
-        ensure!(
+        near_check_result(ensure!(
             expiration_timestamp > whitelist_status.expiration_timestamp,
             Error::DoesNotExtendExpiration
-        )
-        .unwrap();
+        ));
 
         whitelist_status.expiration_timestamp = expiration_timestamp;
         (*m).insert(&hash, &whitelist_status);

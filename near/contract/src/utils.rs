@@ -105,13 +105,12 @@ pub(crate) struct SignatureVerify;
 
 impl SignatureManger for SignatureVerify {
     fn verify(key: &[u8], message: &[u8], signature: &[u8]) -> bool {
-        let signature = ed25519_dalek::Signature::try_from(signature)
-            .expect("Signature should be a valid array of 64 bytes");
-
-        let public_key =
-            ed25519_dalek::PublicKey::from_bytes(key).expect("Invalid public key passed");
-
-        public_key.verify(message, &signature).is_ok()
+        if let Ok(signature) = ed25519_dalek::Signature::try_from(signature) {
+            if let Ok(public_key) = ed25519_dalek::PublicKey::from_bytes(key) {
+                return public_key.verify(message, &signature).is_ok();
+            }
+        }
+        false
     }
 }
 

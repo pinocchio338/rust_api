@@ -38,10 +38,6 @@ const contractAccount = process.env.CONTRACT_ACCOUNT;
 const adminAccount = process.env.ADMIN_ACCOUNT;
 const userAccount = process.env.USER_ACCOUNT;
 
-// If you are running the first time, ensure this is false
-// else make this true
-const isInitialized = true;
-
 const config = {
   keyStore,
   networkId: "testnet",
@@ -139,17 +135,9 @@ describe('Token', function () {
 
     beaconSetId = deriveDApiId(beaconSetTemplateIds.map(r => deriveBeaconId(keyPair.getPublicKey().data, r)));
 
-    if (!isInitialized) {
-      await contract.initialize(
-        {
-          args: { }
-        }
-      );
-
-      const reader = userAccount;
-      const unlimitedReaderRole = (await contract.roles())[0];
-      await client.grantRole([...unlimitedReaderRole], reader);
-    }
+    const reader = userAccount;
+    const unlimitedReaderRole = (await contract.roles())[0];
+    await client.grantRole([...unlimitedReaderRole], reader);
   });
 
   describe('updateBeaconWithSignedData', function () {

@@ -17,7 +17,6 @@ async function updateBeacon(client, signer, airnodeAddress, templateId, value, t
       toBuffer(airnodeAddress),
       templateId
     );
-    console.log(beaconId);
     const beacon = await readerClient.readDataFeedWithId(beaconId);
     expect(beacon.value).toEqual([...encodeData(value)])
     expect(beacon.timestamp).toEqual(timestamp)
