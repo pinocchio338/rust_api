@@ -1,4 +1,4 @@
-use std::fmt::{Debug};
+use std::fmt::Debug;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -56,7 +56,7 @@ pub enum Error {
     #[error("Airnode id cannot be zero")]
     AirnodeIdZero,
     #[error("Setter can set indefinite status")]
-    SetterCanSetIndefiniteStatus
+    SetterCanSetIndefiniteStatus,
 }
 
 impl From<Error> for u32 {

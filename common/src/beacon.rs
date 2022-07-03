@@ -246,10 +246,7 @@ pub fn update_dapi_with_signed_data<
             // Timestamp validity is already checked, which means it will
             // be small enough to be typecast into `uint32`
             accumulated_timestamp += timestamp;
-            beacon_ids.push(derive_beacon_id(
-                airnodes[ind].clone(),
-                template_ids[ind],
-            ));
+            beacon_ids.push(derive_beacon_id(airnodes[ind].clone(), template_ids[ind]));
         } else {
             let beacon_id = derive_beacon_id(airnodes[ind].clone(), template_ids[ind]);
             let data_point = datapoint_storage
@@ -395,7 +392,9 @@ pub fn process_beacon_update<D: Storage<DataPoint>>(
 fn not_zero(bytes: &[u8]) -> bool {
     let mut count = 0;
     for i in bytes {
-        if *i == 0u8 { count += 1; }
+        if *i == 0u8 {
+            count += 1;
+        }
     }
     count != bytes.len()
 }
@@ -407,8 +406,8 @@ mod tests {
 
     #[test]
     fn not_zero_works() {
-        assert!(!not_zero(&[0;12]));
-        let mut v = [0;12];
+        assert!(!not_zero(&[0; 12]));
+        let mut v = [0; 12];
         v[2] = 1;
         assert!(not_zero(&v));
     }
