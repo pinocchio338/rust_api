@@ -22,7 +22,6 @@ near_sdk::setup_alloc!();
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct DapiServer {
-    initialized: bool,
     /// Data point related storage
     data_points: LookupMap<Bytes32, NearDataPoint>,
     name_hash_to_data_point_id: LookupMap<Bytes32, Bytes32>,
@@ -42,17 +41,28 @@ impl Default for DapiServer {
         let data_points = LookupMap::new(b'd');
         let name_hash_to_data_point_id = LookupMap::new(b'n');
 
-        let role_membership = LookupMap::new(b'm');
-        let role_admin = LookupMap::new(b'a');
+        let mut role_membership = LookupMap::new(b'm');
+        let mut role_admin = LookupMap::new(b'a');
 
         let service_id_to_user_to_whitelist_status = LookupMap::new(b's');
         let service_id_to_user_to_setter_to_indefinite_whitelist_status = LookupMap::new(b'b');
+
+        let manager = msg_sender();
+        let admin_role_description = String::from("admin role");
+        let mut access = NearAccessControlRegistry::requires_write(
+            manager.clone(),
+            admin_role_description.clone(),
+            &mut role_membership,
+            &mut role_admin,
+        );
+        access
+            .grant_role(&NearAccessControlRegistry::DEFAULT_ADMIN_ROLE, &manager)
+            .expect("initialization failed");
         Self {
-            initialized: false,
             data_points,
             name_hash_to_data_point_id,
-            manager: Address(vec![]),
-            admin_role_description: String::from("admin role"),
+            manager,
+            admin_role_description,
             role_membership,
             role_admin,
             service_id_to_user_to_whitelist_status,
@@ -63,28 +73,6 @@ impl Default for DapiServer {
 
 #[near_bindgen]
 impl DapiServer {
-    /// The initializer of the contract
-    pub fn initialize(&mut self) {
-        ensure!(!self.initialized, Error::AlreadyInitialized);
-
-        let manager = msg_sender();
-        let mut access = NearAccessControlRegistry::requires_write(
-            manager.clone(),
-            self.admin_role_description.clone(),
-            &mut self.role_membership,
-            &mut self.role_admin,
-        );
-        access
-            .grant_role(
-                &NearAccessControlRegistry::DEFAULT_ADMIN_ROLE,
-                &msg_sender(),
-            )
-            .expect("initialization failed");
-
-        self.manager = manager;
-        self.initialized = true;
-    }
-
     // ================== Access Control ====================
     pub fn roles(&self) -> (Bytes32, Bytes32) {
         let access = NearAccessControlRegistry::read_only(
@@ -197,7 +185,7 @@ impl DapiServer {
         ]);
 
         if !SignatureVerify::verify(&airnode, &message, &signature) {
-            near_sdk::env::panic("Signature verification wrong".as_ref());
+            near_sdk::env::panic("InvalidSignature".as_ref());
         }
 
         let beacon_id = api3_common::derive_beacon_id(airnode.to_vec(), template_id);
@@ -469,7 +457,11 @@ impl DapiServer {
             &mut self.service_id_to_user_to_whitelist_status,
             &mut self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
         );
-        whitelist.extend_whitelist_expiration(&service_id, &Address(user.as_bytes().to_vec()), expiration_timestamp)
+        whitelist.extend_whitelist_expiration(
+            &service_id,
+            &Address(user.as_bytes().to_vec()),
+            expiration_timestamp,
+        )
     }
 
     /// Sets the expiration of the temporary whitelist of `user` to be
@@ -498,7 +490,11 @@ impl DapiServer {
             &mut self.service_id_to_user_to_whitelist_status,
             &mut self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
         );
-        whitelist.set_whitelist_expiration(&service_id, &Address(user.as_bytes().to_vec()), expiration_timestamp)
+        whitelist.set_whitelist_expiration(
+            &service_id,
+            &Address(user.as_bytes().to_vec()),
+            expiration_timestamp,
+        )
     }
 
     /// Sets the indefinite whitelist status of `user` to be able to
@@ -526,7 +522,11 @@ impl DapiServer {
             &mut self.service_id_to_user_to_whitelist_status,
             &mut self.service_id_to_user_to_setter_to_indefinite_whitelist_status,
         );
-        let r = whitelist.set_indefinite_whitelist_status(&service_id, &Address(user.as_bytes().to_vec()), status);
+        let r = whitelist.set_indefinite_whitelist_status(
+            &service_id,
+            &Address(user.as_bytes().to_vec()),
+            status,
+        );
         Bytes32::from(r)
     }
 
@@ -614,9 +614,9 @@ fn nanoseconds_to_seconds(nano: u64) -> u32 {
 }
 
 fn near_check_result<T: Debug>(r: Result<T, Error>) -> T {
-    if r.is_ok() {
-        r.unwrap()
+    if let Ok(v) = r {
+        v
     } else {
-        near_sdk::env::panic((&format!("Invalid request: {:?}", r.unwrap_err())).as_ref())
+        near_sdk::env::panic(format!("Invalid request: {:?}", r.unwrap_err()).as_ref())
     }
 }
