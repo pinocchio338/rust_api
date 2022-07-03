@@ -43,7 +43,6 @@ class DapiServer {
         const pubKeyBuf = toBuffer(airnodeAddress);
         const bufferedTimestamp = bufferU64BE(timestamp);
         const bufferedTemplateId = Buffer.from(templateId, 'hex');
-        const encodedData = encodeData(data);
         const buf = toBuffer(signature);
 
         await this.contract.update_beacon_with_signed_data(
@@ -52,7 +51,7 @@ class DapiServer {
                   airnode: [...pubKeyBuf],
                   template_id: [...bufferedTemplateId],
                   timestamp: [...bufferedTimestamp],
-                  data: [...encodedData],
+                  data: [...data],
                   signature: [...buf]
                 }
             }

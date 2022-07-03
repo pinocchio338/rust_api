@@ -24,7 +24,6 @@ class WithSetterRole {
             reader
         );
         const expected = Buffer.alloc(32, 0);
-        expected.writeUint8(1, 31);
         expect(r[0]).toEqual(timestamp)
         expect(r[1]).toEqual([...expected])
     }
