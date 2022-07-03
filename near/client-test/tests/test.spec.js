@@ -172,11 +172,7 @@ describe('Token', function () {
 
     it('updateBeacon', async function () {
       const timestamp = currentTimestamp() + 1;
-      const beacon = await updateBeacon(client, keyPair, keyPair.getPublicKey().data, templateId, 123, timestamp, userClient);
-      ensure(
-        array_equals(beacon.value, [...encodeData(value)])
-      );
-      ensure(beacon.timestamp === timestamp);
+      await updateBeacon(client, keyPair, keyPair.getPublicKey().data, templateId, 123, timestamp, userClient);
     });
 
     it('dataNotFresherThanBeacon', async function () {
@@ -188,7 +184,7 @@ describe('Token', function () {
     });
 
     it('timestampNotValid', async function () {
-      await timestampNotValid(client, keyPair, keyPair.getPublicKey().data, templateId);
+      await timestampNotValid(client, keyPair, keyPair.getPublicKey().data);
     });
 
     it('signatureNotValid', async function () {
@@ -376,6 +372,10 @@ describe('Token', function () {
     describe('Sender has whitelist expiration extender role', function () {
       beforeAll(async function () {
         await WithExtenderRole.setup(client, userAccount, userClient);
+      });
+
+      it('cannotExtendWhitelistExpiration', async function () {
+        await WithExtenderRole.cannotExtendWhitelistExpiration(client, userAccount, userClient);
       });
 
       it('extendsWhitelistExpiration', async function () {

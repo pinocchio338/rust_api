@@ -1,16 +1,14 @@
 const { execPath } = require("process");
-const { generateRandomBytes32, currentTimestamp } = require("../../src/util");
+const { generateRandomBytes32, currentTimestamp, delay } = require("../../src/util");
 
 
 class WithExtenderRole {
-    static async setup(client, userAccount, userClient) {
+    static async setup(client, userAccount) {
         const whitelistExpirationExtenderRole = await client.whitelistExpirationExtenderRole();
         const hasRole = await client.hasRole(whitelistExpirationExtenderRole, userAccount);
-        if(hasRole) {
-            throw new Error("Setup not OK, already has role!")
+        if (!hasRole) {
+            await client.grantRole(whitelistExpirationExtenderRole, userAccount);
         }
-        await WithExtenderRole.cannotExtendWhitelistExpiration(userClient);
-        await client.grantRole(whitelistExpirationExtenderRole, userAccount);
     }
 
     static async tearDown(client, userAccount) {
@@ -18,11 +16,22 @@ class WithExtenderRole {
         await client.revokeRole(whitelistExpirationExtenderRole, userAccount);
     }
 
-    static async cannotExtendWhitelistExpiration(client) {
+    static async cannotExtendWhitelistExpiration(client, userAccount, userClient) {
+        const whitelistExpirationExtenderRole = await client.whitelistExpirationExtenderRole();
+        const hasRole = await client.hasRole(whitelistExpirationExtenderRole, userAccount);
+
+        await client.revokeRole(whitelistExpirationExtenderRole, userAccount);
+        await delay(1000);
+
         const timestamp = currentTimestamp();
         const reader = generateRandomBytes32().toString();
         const beaconId = [...generateRandomBytes32()];
-        await expect(client.extendWhitelistExpiration(beaconId, reader, timestamp)).rejects.toThrow("AccessDenied")
+        await expect(userClient.extendWhitelistExpiration(beaconId, reader, timestamp)).rejects.toThrow("AccessDenied")
+
+        // recover to its starting condition
+        if (hasRole) {
+            await client.grantRole(whitelistExpirationExtenderRole, userAccount);
+        }
     }
 
     static async extendsWhitelistExpiration(client) {
@@ -35,7 +44,6 @@ class WithExtenderRole {
             reader
         );
         const expected = Buffer.alloc(32, 0);
-        expected.writeUint8(1, 31);
         expect(r[0]).toEqual(timestamp);
         expect(r[1]).toEqual([...expected]);
     }
