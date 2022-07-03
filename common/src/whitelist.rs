@@ -115,7 +115,8 @@ pub trait WhitelistRolesWithManager:
     /// # Arguments
     ///
     /// * `account` Account address
-    fn has_whitelist_expiration_extender_role_or_is_manager(&self, account: &Self::Address) -> bool;
+    fn has_whitelist_expiration_extender_role_or_is_manager(&self, account: &Self::Address)
+        -> bool;
 
     /// Returns if the account has the indefinite whitelister role or is the
     /// manager

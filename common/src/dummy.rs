@@ -121,14 +121,29 @@ where
     ) {
     }
 
-    fn set_whitelist_expiration(&mut self, _service_id: &Bytes32, _user: &<Self as Whitelist>::Address, _expiration_timestamp: u64) {
+    fn set_whitelist_expiration(
+        &mut self,
+        _service_id: &Bytes32,
+        _user: &<Self as Whitelist>::Address,
+        _expiration_timestamp: u64,
+    ) {
     }
 
-    fn set_indefinite_whitelist_status(&mut self, _service_id: &Bytes32, _user: &<Self as Whitelist>::Address, _status: bool) -> U256 {
+    fn set_indefinite_whitelist_status(
+        &mut self,
+        _service_id: &Bytes32,
+        _user: &<Self as Whitelist>::Address,
+        _status: bool,
+    ) -> U256 {
         U256::from(0u8)
     }
 
-    fn revoke_indefinite_whitelist_status(&mut self, _service_id: &Bytes32, _user: &<Self as Whitelist>::Address, _setter: &<Self as Whitelist>::Address) -> (bool, U256) {
+    fn revoke_indefinite_whitelist_status(
+        &mut self,
+        _service_id: &Bytes32,
+        _user: &<Self as Whitelist>::Address,
+        _setter: &<Self as Whitelist>::Address,
+    ) -> (bool, U256) {
         (false, U256::from(0u8))
     }
 }
