@@ -17,8 +17,6 @@ const { generateRandomBytes32, toBuffer, currentTimestamp, deriveBeaconId, deriv
 const fs = require("fs");
 const ethers = require("ethers");
 const nearAPI = require("near-api-js");
-const { keyStores } = require("near-api-js");
-const path = require("path");
 const { updatesBeaconSetWithSignedData, updatedSetValueOutdated, lengthNotCorrect, notAllSignaturesValid, parameterLengthMismatch } = require("./utils/updateBeaconSetWithSignedData");
 const { readerZeroAddress, readerNotWhitelisted, readerWhitelisted, readerUnlimitedReaderRole } = require("./utils/readerCanReadDataFeed");
 const { dataFeedIdToReaderToWhitelistStatus, dataFeedIdToReaderToSetterToIndefiniteWhitelistStatus } = require("./utils/whitelist");
@@ -29,27 +27,12 @@ const { WithIndefiniteWhitelisterSetterRole } = require("./utils/setIndefiniteWh
 const { revokesIndefiniteWhitelistStatus, setterHasIndefiniteWhitelisterRole } = require("./utils/revokeIndefiniteWhitelistStatus");
 const { readerNotPermitted, readerUnlimitedReaderReads, readerWhitelistedReads } = require("./utils/readDataFeedWithId");
 const { readerWhitelistedReadsByName, unlimitedReaderReadsWithName, readerNotPermittedWithName } = require("./utils/readDataFeedWithDapiName");
-const homedir = require("os").homedir();
-const CREDENTIALS_DIR = ".near-credentials";
-const credentialsPath = path.join(homedir, CREDENTIALS_DIR);
-const keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsPath);
-
-const contractAccount = process.env.CONTRACT_ACCOUNT;
-const adminAccount = process.env.ADMIN_ACCOUNT;
-const userAccount = process.env.USER_ACCOUNT;
-
-const config = {
-  keyStore,
-  networkId: "testnet",
-  nodeUrl: "https://rpc.testnet.near.org",
-};
+const { Worker, NEAR } = require("near-workspaces");
 
 // Network can get unpredictable, set timeout to a large value just in case
 jest.setTimeout(120_000);
 
 describe('Token', function () {
-  let contract;
-  let userContract;
   let near;
 
   const templateId = generateRandomBytes32();
@@ -66,10 +49,33 @@ describe('Token', function () {
   // This is just a test util contract with propoer reading access, for data checking purposes
   let userClient;
 
+  let worker;
+
+  let admin, user, userAccount, contractAccount, contract;
+
   let keyPair;
   beforeAll(async function () {
-    near = await nearAPI.connect(config);
-    const admin = await near.account(adminAccount);
+    worker = await Worker.init();
+    // deploy contract
+    const root = worker.rootAccount;
+    near = await nearAPI.connect({
+      nodeUrl: worker.provider()
+    });
+    contractAccount = await near.account(root.getSubAccount("contract").accountId)
+    contract = await root.createAndDeploy(
+      contractAcc.accountId,
+      "../../../target/wasm32-unknown-unknown/release/dapi_server.wasm",
+      { initialBalance: NEAR.parse("30 N").toJSON() }
+    );
+    const adminAccount = await root.createSubAccount("admin", {
+      initialBalance: NEAR.parse("30 N").toJSON(),
+    });
+    admin = await near.account(adminAccount.accountId);
+
+    user = await near.account((await root.createSubAccount("user", {
+      initialBalance: NEAR.parse("30 N").toJSON(),
+    })).accountId);
+    userAccount = user.accountId
     contract = new nearAPI.Contract(admin, contractAccount, {
       viewMethods: [
         'has_role',
@@ -103,7 +109,6 @@ describe('Token', function () {
       ],
     });
     client = new DapiServer(contract);
-    const user = await near.account(userAccount);
     userContract = new nearAPI.Contract(user, contractAccount, {
       viewMethods: [
         'roles',
@@ -128,17 +133,17 @@ describe('Token', function () {
       ],
     });
     userClient = new DapiServer(userContract);
+    const adminKeyPair = await adminAccount.getKey()
+    beaconSetId = deriveDApiId(beaconSetTemplateIds.map(r => deriveBeaconId(adminKeyPair.getPublicKey().data, r)));
 
-    const key = `${admin.connection.signer.keyStore.keyDir}/testnet/${admin.accountId}.json`;
-    const data = JSON.parse(fs.readFileSync(key));
-    keyPair = nearAPI.KeyPair.fromString(data.private_key);
-
-    beaconSetId = deriveDApiId(beaconSetTemplateIds.map(r => deriveBeaconId(keyPair.getPublicKey().data, r)));
-
-    const reader = userAccount;
+    const reader = user.accountId;
     const unlimitedReaderRole = (await contract.roles())[0];
     await client.grantRole([...unlimitedReaderRole], reader);
   });
+
+  afterAll(async function() {
+    await worker.tearDown()
+  })
 
   describe('updateBeaconWithSignedData', function () {
     let roles;

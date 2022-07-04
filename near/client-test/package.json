@@ -3,7 +3,7 @@
   "description": "",
   "version": "0.0.1",
   "license": "MIT",
-  "type":"module",
+  "type": "module",
   "scripts": {
     "test": "NEAR_NO_LOGS=true jest --runInBand"
   },
@@ -15,6 +15,7 @@
     "jest": "~27.3.1",
     "jest-environment-node": "~27.3.1",
     "near-cli": "^2.1.1",
+    "near-workspaces": "^2.0.0",
     "nodemon": "~2.0.14",
     "parcel-bundler": "~1.12.5"
   },
