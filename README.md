@@ -75,17 +75,24 @@ near deploy --wasmFile ./target/wasm32-unknown-unknown/release/dapi_server.wasm 
 ```
 If you get error on not enough balance. Run `near dev-deploy ...` and delete generated dev-xxxx account in favour of your account: `near delete dev-xxxx ${CONTRACT_ACCOUNT}`
 
+Once you have deployed the contract, perform some santiy checks to ensure proper deployment, such as:
+```bash
+# This should pass with no problem
+near call <CONTRACT_ACCOUNT> grant_role '{"role":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"who":"user-test1.testnet"}' --accountId <ADMIN_ACCOUNT>
+# This should return true
+near view <CONTRACT_ACCOUNT> has_role '{"role":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"who":"user-test1.testnet"}'
+# This should pass with no problem
+near call <CONTRACT_ACCOUNT> revoke_role '{"role":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"who":"user-test1.testnet"}' --accountId <ADMIN_ACCOUNT>
+# This should return false
+near view <CONTRACT_ACCOUNT> has_role '{"role":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"who":"user-test1.testnet"}'
+```
+
 #### Run tests
-The tests are located in `near/client-test`, the `main` for tests is `near/client-test/src/test.js`.
-Locate the DEFINITION of `isInitialized`, it tells the program whether to initialize the contract. If you are running the first time, 
-ensure this is `false`, else you can mark this as `true`.
-Most of the tests are commented off by default, if you want to test specific parts, uncomment the section.
-To run the test: `cd near/client-test && yarn jest`. 
+The tests are located in `near/client-test`, the `main` for tests is `near/client-test/tests/test.spec.js`. Use `npm install` if you have not setup before.
 
-Please note that the tests will take around 10 minutes to finish. 
+To run the test: `cd near/client-test && yarn jest`. Please note that the tests will take around 10 minutes to finish. At the same time, it is also running against a live network, sometimes there will be timeout errors, but near would retry automatically.
 
-When the contract reverts 
-execution, the near client would log the contract execution error with `console.warn`. The tests would capture the exceptions thrown and check the expected error name appears in the error message. If you want to disable the warn logs, use `yarn jest --silent`.
+When the contract reverts execution, the near client would log the contract execution error with `console.warn`. The tests would capture the exceptions thrown and check the expected error name appears in the error message. If you want to disable the warn logs, use `yarn jest --silent`.
 
 #### Clean up
 To clean up, just delete the accounts using `near delete ... ...`. See `https://docs.near.org/docs/tools/near-cli#near-delete`.
