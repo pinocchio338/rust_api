@@ -1,8 +1,6 @@
-const { fail } = require("assert");
 const { ethers } = require("ethers");
 const { 
   currentTimestamp, encodeAndSignData, encodeData, toBuffer, deriveBeaconId,
-  prepareMessage,
   generateRandomBytes32,
   bufferU64BE,
   keccak256Packed,
